@@ -1,0 +1,1942 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smooth / Rough Map</title>
+  <meta name="description" content="A flat semantic map of nouns associated with smooth and rough." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='white'/%3E%3Ccircle cx='10' cy='16' r='7' fill='black'/%3E%3Cpath d='M19 7l3 4 5-2-1 5 4 3-5 2 1 5-5-2-3 4-1-5-5-1 4-4-3-4 5 1z' fill='black'/%3E%3C/svg%3E" />
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --text-size: 20px;
+      --small-text-size: 15px;
+      --cover-type-size: clamp(35px, 3.8125vw, 67.5px);
+      --content-gutter: 26px;
+      --line-weight: 1.5px;
+      --mark-line: 1.75px;
+    }
+    html, body { margin: 0; min-height: 100%; background: #fff; color: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; }
+    body { overflow: hidden; }
+    button, input { font: inherit; }
+    #site { position: relative; width: 100%; height: 100vh; min-height: 620px; background: #fff; }
+    .cover {
+      position: absolute;
+      inset: 0 7.02% 0 0;
+      z-index: 20;
+      display: none;
+      overflow: auto;
+      padding: 14px 12px 14px 26px;
+      background: #fff;
+    }
+    .cover.is-active { display: block; }
+    .cover-inner {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+      column-gap: 12px;
+      row-gap: 0;
+      min-height: calc(100dvh - 28px);
+    }
+    .cover-heading { grid-column: 1 / -1; }
+    .cover-title, .cover-deck {
+      margin: 0;
+      font: 400 var(--cover-type-size)/1.06 Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    .cover-index-list {
+      grid-column: 1 / span 4;
+      display: grid;
+      gap: 0;
+      justify-items: start;
+      margin: 0;
+      padding: 0 0 0 8%;
+      list-style: none;
+    }
+    .cover-index-list li:nth-child(1) { margin-left: 0; }
+    .cover-index-list li:nth-child(2) { margin-left: 2ch; }
+    .cover-index-list li:nth-child(3) { margin-left: 4ch; }
+    .cover-index-list li:nth-child(4) { margin-left: 6ch; }
+    .cover-page-link {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #000;
+      font: 400 var(--cover-type-size)/1.06 Arial, sans-serif;
+      cursor: pointer;
+    }
+    .cover-page-link:hover, .cover-page-link:focus-visible { text-decoration: underline; text-underline-offset: .12em; }
+    .cover-symbols {
+      grid-column: 5 / -1;
+      grid-row: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    .cover-symbols svg { width: clamp(88px, 10vw, 168px); height: clamp(88px, 10vw, 168px); overflow: visible; }
+    .cover-symbols svg + svg { margin-left: clamp(-36px, -1.8vw, -14px); }
+    .cover-symbols [stroke] { stroke-width: 2.25; }
+    .cover-turn {
+      grid-column: 1 / -1;
+      display: block;
+      margin: 0;
+      font: 400 var(--cover-type-size)/1.06 Arial, sans-serif;
+    }
+    .cover-tab-sample { display: inline-block; width: 4.2em; height: .82em; margin: 0 .18em; vertical-align: -.06em; background: #000; }
+    .cover-notes {
+      grid-column: 1 / -1;
+      grid-row: 5;
+      display: grid;
+      grid-template-columns: minmax(0, 6fr) minmax(0, 2.8fr) minmax(0, 3.2fr);
+      gap: 12px;
+      align-items: end;
+      align-self: end;
+    }
+    .cover-note:nth-child(1) { grid-column: 1; }
+    .cover-note:nth-child(2) { grid-column: 2; }
+    .cover-note:nth-child(3) { grid-column: 3; }
+    .cover-note {
+      min-width: 0;
+      padding: 9px 11px;
+      border: 2.25px solid #000;
+      font: 400 var(--text-size)/1.28 Arial, sans-serif;
+    }
+    .page {
+      position: absolute;
+      inset: 0 var(--content-gutter);
+      display: block;
+      visibility: hidden;
+      overflow: hidden;
+      background: #fff;
+      pointer-events: none;
+    }
+    .page[data-page-panel="raw"] { left: 1.388%; right: 5.792%; }
+    .page[data-page-panel="mapping"] { left: 4.49%; right: 2.69%; }
+    .page[data-page-panel="story"] { left: 6.392%; right: .788%; }
+    .page[data-page-panel="references"] { left: 7.02%; right: 0; }
+    .page.is-active { visibility: visible; pointer-events: auto; }
+    .page-scroll { width: 100%; height: 100%; overflow: auto; padding: 14px 20px 48px; }
+    .page-heading { margin: 0 0 28px; font-size: var(--text-size); font-weight: 400; }
+    .page-index { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+    .page-tab { position: absolute; padding: 0; border: 0; border-radius: 0; background: #000; cursor: pointer; pointer-events: auto; transition: left 140ms linear, right 140ms linear; }
+    .page-tab.on-left { right: auto; }
+    .page-tab.on-right { left: auto; }
+    .page-tab:nth-child(1).on-left { left: 0; }
+    .page-tab:nth-child(2).on-left { left: 1.228%; }
+    .page-tab:nth-child(3).on-left { left: 4.33%; }
+    .page-tab:nth-child(4).on-left { left: 6.232%; }
+    .page-tab:nth-child(1).on-right { right: 5.632%; }
+    .page-tab:nth-child(2).on-right { right: 2.53%; }
+    .page-tab:nth-child(3).on-right { right: .628%; }
+    .page-tab:nth-child(4).on-right { right: 0; }
+    .page-tab:nth-child(1) { top: 0; bottom: 81.5%; width: 1.388%; }
+    .page-tab:nth-child(2) { top: 18.5%; bottom: 38%; width: 3.262%; }
+    .page-tab:nth-child(3) { top: 62%; bottom: 10.5%; width: 2.062%; }
+    .page-tab:nth-child(4) { top: 89.5%; bottom: 0; width: .788%; }
+    #map { position: relative; width: 100%; height: 100%; background: #fff; touch-action: none; }
+    #map-svg { position: relative; z-index: 1; width: 100%; height: 100%; display: block; background: transparent; }
+    .edge { stroke: #000; stroke-width: var(--line-weight); stroke-linecap: round; vector-effect: non-scaling-stroke; }
+    .item-edge { stroke-dasharray: 4 4; }
+    .word rect { fill: #fff; stroke: none; vector-effect: non-scaling-stroke; }
+    .word:not(.is-major) rect { display: block; fill: #fff; stroke: none; }
+    .word text { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; text-anchor: middle; dominant-baseline: middle; }
+    @media (hover: hover) and (pointer: fine) {
+      .word:hover rect { display: block; fill: #000; stroke: #000; stroke-width: var(--line-weight); }
+      .word:hover text { fill: #fff; }
+    }
+    .word.hover-copy rect, .word.hover-copy:not(.is-major) rect, .hover-copy rect { display: block !important; fill: #000 !important; stroke: #000 !important; stroke-width: var(--line-weight); }
+    .hover-copy text { fill: #fff !important; }
+    .concept { cursor: default; }
+    .notation-fill { fill: #fff; stroke: none; }
+    .notation-bracket { fill: none; stroke: #000; stroke-width: var(--mark-line); stroke-linecap: square; stroke-linejoin: miter; vector-effect: non-scaling-stroke; pointer-events: none; }
+    .concept rect { fill: #fff; stroke: none; vector-effect: non-scaling-stroke; }
+    .concept text { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; }
+    .concept.is-hovered rect { fill: #000; }
+    .concept.is-hovered text { fill: #fff; }
+    .concept.is-related rect { fill: #000; }
+    .concept.is-related text { fill: #fff; }
+    .theme { cursor: default; }
+    .theme text { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; }
+    .theme.is-hovered .notation-fill, .theme.is-related .notation-fill { fill: #000; }
+    .theme.is-hovered text, .theme.is-related text { fill: #fff; }
+    .word.is-related rect { display: block; fill: #000; stroke: #000; }
+    .word.is-related text { fill: #fff; }
+    .hover-copy .notation-fill { fill: #000 !important; }
+    .anchor rect { fill: #fff; stroke: none; }
+    .anchor.is-hovered rect { fill: #000; }
+    .anchor.is-hovered text { fill: #fff; }
+    .anchor-label { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; text-anchor: middle; dominant-baseline: middle; letter-spacing: 0; }
+    .section-label { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; }
+    .map-toolbar {
+      position: absolute;
+      z-index: 10;
+      top: 0;
+      right: 0;
+      left: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 194px;
+      align-items: start;
+      gap: 10px;
+      padding: 14px 12px 0 72px;
+      pointer-events: none;
+    }
+    .view-controls { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; min-width: 0; pointer-events: auto; }
+    .view-button {
+      padding: 4px 9px;
+      border: var(--line-weight) solid #000;
+      border-radius: 999px;
+      background: #fff;
+      color: #000;
+      font-weight: 400;
+      cursor: pointer;
+    }
+    .view-button[aria-pressed="true"] { background: #000; color: #fff; }
+    .controls {
+      display: grid;
+      gap: 6px;
+      justify-self: end;
+      pointer-events: auto;
+    }
+    .control-row {
+      display: grid;
+      grid-template-columns: 80px 105px;
+      align-items: center;
+      gap: 9px;
+      font: 400 var(--text-size)/1 Arial, sans-serif;
+    }
+    .control-label { text-align: left; }
+    .range-control {
+      --fill: 18%;
+      position: relative;
+      width: 105px;
+      height: 28px;
+      overflow: hidden;
+      border: var(--line-weight) solid #1b1b1b;
+      border-radius: 999px;
+      background: linear-gradient(to right, #1b1b1b 0 var(--fill), #fff var(--fill) 100%);
+    }
+    .range-control::after {
+      content: "";
+      position: absolute;
+      z-index: 1;
+      top: 0;
+      bottom: 0;
+      left: var(--fill);
+      width: var(--line-weight);
+      background: #1b1b1b;
+      pointer-events: none;
+    }
+    .range-control span {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      transform: translateY(-52%);
+      font: 400 var(--text-size)/1 Arial, sans-serif;
+      pointer-events: none;
+      user-select: none;
+    }
+    .range-control .minus { left: 9px; color: #fff; }
+    .range-control .plus { right: 9px; color: #1b1b1b; }
+    .range-control input {
+      position: absolute;
+      z-index: 3;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: ew-resize;
+    }
+    .range-control:has(input:focus-visible) { outline: var(--line-weight) solid #000; outline-offset: 2px; }
+    .raw-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(12px, 2vw, 28px); }
+    .raw-group { min-width: 0; --raw-columns: 34% 33% 33%; }
+    .raw-header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: var(--raw-columns);
+      align-items: start;
+      background: #fff;
+      font-weight: 400;
+      line-height: 1.45;
+    }
+    .raw-title { margin: 0; padding: 0 8px 0 0; font-size: var(--text-size); font-weight: 400; line-height: inherit; }
+    .raw-column-header { min-width: 0; padding-right: 8px; font-weight: 400; line-height: inherit; }
+    .raw-body { display: grid; grid-template-columns: var(--raw-columns); align-items: start; min-width: 0; }
+    .raw-stats {
+      position: sticky;
+      top: 2.9em;
+      grid-column: 1;
+      align-self: start;
+      min-width: 0;
+      margin-top: 1.45em;
+      padding-right: 8px;
+    }
+    .raw-stat-card { border: var(--line-weight) solid #000; padding: 7px; background: #fff; }
+    .raw-stat-card + .raw-stat-card { border-top: 0; }
+    .raw-pie {
+      display: block;
+      width: 100%;
+      max-width: 160px;
+      aspect-ratio: 1;
+      margin: 0 auto 9px;
+      overflow: visible;
+      transform: scaleY(-1);
+      transform-origin: center;
+    }
+    .raw-pie-slice { fill: #000; opacity: 0; cursor: pointer; pointer-events: all; transition: opacity 120ms linear; }
+    .raw-pie-outline, .raw-pie-divider { fill: none; stroke: #000; stroke-width: var(--line-weight); vector-effect: non-scaling-stroke; }
+    .raw-group.is-inspecting[data-active-sense="literal"] .raw-pie-slice.literal,
+    .raw-group.is-inspecting[data-active-sense="metaphorical"] .raw-pie-slice.metaphorical { opacity: 1; }
+    .raw-stat-summary { display: grid; gap: 2px; font-size: var(--small-text-size); line-height: 1.2; }
+    .raw-stat-line { display: flex; min-width: 0; flex-wrap: wrap; align-items: baseline; gap: 2px 3px; }
+    .raw-stat-line.total { justify-content: space-between; gap: 2px 6px; }
+    .raw-stat-total { min-width: 0; margin-left: auto; text-align: right; overflow-wrap: anywhere; }
+    .raw-percent {
+      display: inline-block;
+      padding: 0 3px;
+      border: var(--line-weight) solid #000;
+      border-radius: 999px;
+      background: #fff;
+      color: #000;
+      cursor: pointer;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+    .raw-group.is-inspecting[data-active-sense="literal"] .raw-percent.literal,
+    .raw-group.is-inspecting[data-active-sense="metaphorical"] .raw-percent.metaphorical { background: #000; color: #fff; }
+    .raw-list { grid-column: 2 / span 2; min-width: 0; padding-top: 1.45em; }
+    .raw-row { display: grid; grid-template-columns: 1fr 1fr; align-items: start; min-width: 0; }
+    .raw-noun { min-width: 0; padding-right: 8px; overflow-wrap: anywhere; font-weight: 400; line-height: 1.45; }
+    .raw-bar-cell { display: flex; min-width: 0; min-height: 1.45em; align-items: center; }
+    .raw-bar {
+      position: relative;
+      width: var(--bar-width);
+      min-width: 1px;
+      height: .82em;
+      background: #000;
+      border: var(--line-weight) solid #000;
+      outline: none;
+    }
+    .raw-grid.has-inspection .raw-bar { min-width: 2px; background: #fff; }
+    .raw-grid.has-inspection .raw-group.is-inspecting[data-active-sense="literal"] .raw-bar.literal,
+    .raw-grid.has-inspection .raw-group.is-inspecting[data-active-sense="metaphorical"] .raw-bar.metaphorical { background: #000; }
+    .raw-bar::after {
+      content: attr(data-count);
+      position: absolute;
+      z-index: 4;
+      left: 50%;
+      top: 50%;
+      display: none;
+      padding: 1px 4px;
+      transform: translate(-50%, -50%);
+      border: var(--line-weight) solid #000;
+      background: #fff;
+      color: #000;
+      font: 400 var(--small-text-size)/1.2 Arial, sans-serif;
+      white-space: nowrap;
+    }
+    .raw-bar:hover::after, .raw-bar:focus::after { display: block; }
+    .story-scroll { width: 100%; height: 100%; overflow: auto; padding: 14px 12px 14px 0; }
+    .story-layout { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; height: calc(100dvh - 28px); min-height: 0; }
+    .story-plot { position: relative; grid-column: 1 / span 4; width: 100%; height: 100%; min-width: 0; min-height: 0; background: #fff; }
+    .story-side { grid-column: 5 / span 2; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 26px; width: 100%; height: 100%; min-width: 0; min-height: 0; }
+    .story-legend { display: grid; gap: 10px; align-content: start; }
+    .story-legend-item { display: flex; align-items: center; gap: 8px; min-width: 0; font: 400 var(--text-size)/1 Arial, sans-serif; white-space: nowrap; }
+    .story-legend-item svg { flex: 0 0 24px; width: 24px; height: 24px; overflow: visible; }
+    .story-summary {
+      display: flex;
+      min-height: 360px;
+      flex-direction: column;
+      padding: 14px;
+      overflow: auto;
+      border: var(--line-weight) solid #000;
+      background: #fff;
+      font: 400 var(--text-size)/1.35 Arial, sans-serif;
+    }
+    .story-summary-title { display: grid; gap: 2px; margin: 0 0 1.5em; font: inherit; }
+    .story-summary p { margin: 0; }
+    .story-summary p + p { margin-top: 1em; }
+    .story-summary-conclusion { margin-top: 1.5em !important; }
+    .story-summary-note { margin-top: auto !important; padding-top: 2em; }
+    #story-svg { width: 100%; height: 100%; display: block; }
+    .story-rule { stroke: #000; stroke-width: var(--line-weight); vector-effect: non-scaling-stroke; }
+    .story-band-rule { stroke: #000; stroke-width: var(--line-weight); stroke-dasharray: 5 5; vector-effect: non-scaling-stroke; }
+    .story-label { fill: #000; font: 400 var(--text-size)/1 Arial, sans-serif; }
+    .story-note { fill: #000; font: 400 var(--text-size)/1 Arial, sans-serif; }
+    .story-band-label { fill: #000; stroke: #fff; stroke-width: 5px; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
+    .story-mark { stroke: #000; stroke-width: var(--mark-line); vector-effect: non-scaling-stroke; transform-box: fill-box; transform-origin: center; transition: transform 100ms linear; }
+    .story-node { cursor: pointer; outline: none; }
+    .story-node.is-smooth .story-mark,
+    .story-node.is-rough .story-mark { fill: #fff; }
+    .story-node.is-shared .story-mark { fill: #000; }
+    .story-node:hover .story-mark,
+    .story-node:focus-visible .story-mark { fill: #000; stroke-width: 2px; transform: scale(1.12); }
+    .story-node.is-pinned.is-smooth .story-mark,
+    .story-node.is-pinned.is-rough .story-mark { fill: #fff; stroke-width: var(--mark-line); transform: none; }
+    .story-tooltip {
+      position: absolute;
+      z-index: 5;
+      display: none;
+      width: min(280px, calc(100% - 24px));
+      padding: 7px 9px;
+      border: var(--line-weight) solid #000;
+      background: #fff;
+      color: #000;
+      font: 400 var(--text-size)/1.3 Arial, sans-serif;
+      pointer-events: none;
+    }
+    .story-tooltip.is-visible { display: block; }
+    .story-tooltip-title { margin-bottom: 3px; font-size: var(--text-size); }
+    .story-tooltip-line + .story-tooltip-line { margin-top: 2px; }
+    .story-tooltip-close {
+      position: absolute;
+      top: 3px;
+      right: 5px;
+      padding: 0 2px;
+      border: 0;
+      background: #fff;
+      color: #000;
+      font: 400 var(--text-size)/1 Arial, sans-serif;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .story-tooltip.is-pinned .story-tooltip-title { padding-right: 18px; }
+    .story-pinned-layer { position: absolute; z-index: 6; inset: 0; pointer-events: none; }
+    .story-pinned-card { display: block; }
+    .story-pinned-card .story-tooltip-title { cursor: move; pointer-events: auto; touch-action: none; user-select: none; }
+    #story-tooltip { z-index: 7; }
+    .reference-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 12px; row-gap: 18px; align-items: start; }
+    .reference-title {
+      grid-column: 1;
+      grid-row: 1 / span 6;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      align-self: start;
+      justify-self: start;
+      margin: 0;
+      background: #fff;
+      font-size: var(--text-size);
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: 0;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+    .reference-number { grid-column: 3; padding-right: 8px; text-align: right; line-height: 1.35; }
+    .reference-entry { grid-column: 4 / span 3; line-height: 1.35; overflow-wrap: anywhere; }
+    .reference-entry a { color: inherit; text-decoration: underline; }
+    .reference-note { grid-column: 3 / -1; line-height: 1.35; overflow-wrap: anywhere; }
+    @media (max-width: 720px) {
+      :root {
+        --text-size: 16px;
+        --small-text-size: 12px;
+        --content-gutter: 26px;
+      }
+      #site { min-height: 540px; }
+      .cover { padding: 12px 8px 18px 12px; }
+      .cover-inner {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: auto auto auto auto auto;
+        align-content: start;
+        min-height: calc(100dvh - 30px);
+      }
+      .cover-title, .cover-deck, .cover-page-link, .cover-turn { font-size: clamp(25px, 7.3vw, 38px); }
+      .cover-index-list { grid-column: 1 / -1; }
+      .cover-turn { grid-column: 1 / -1; grid-row: 3; }
+      .cover-symbols { grid-column: 1 / -1; grid-row: 4; min-height: 150px; }
+      .cover-notes {
+        grid-column: 1 / -1;
+        grid-row: 5;
+        grid-template-columns: 1fr;
+        gap: 5px;
+        align-items: stretch;
+        margin-top: 10px;
+      }
+      .cover-note {
+        grid-column: auto !important;
+        font-size: max(12px, calc(var(--text-size) * .78));
+      }
+      .page-scroll { padding: 12px 12px 40px; }
+      .raw-grid { grid-template-columns: 1fr; gap: 36px; }
+      .reference-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 8px; }
+      .reference-title { grid-column: 1; }
+      .reference-number { grid-column: 2; }
+      .reference-entry { grid-column: 3; }
+      .map-toolbar { grid-template-columns: minmax(0, 1fr) 137px; gap: 6px; padding: 12px 4px 0 36px; }
+      .control-row { grid-template-columns: 54px 76px; gap: 7px; }
+      .range-control { width: 76px; }
+      .story-scroll { padding: 12px 8px 12px 0; }
+      .story-layout { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 8px; height: auto; min-height: 0; }
+      .story-plot { grid-column: 1 / -1; height: calc(100dvh - 62px); min-height: 0; }
+      .story-side { grid-column: 1 / -1; grid-template-rows: auto 560px; gap: 18px; height: auto; }
+      .story-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+      .story-legend-item { gap: 4px; }
+      .story-legend-item svg { flex-basis: 18px; width: 18px; height: 18px; }
+      .story-summary { min-height: 560px; }
+    }
+    @media (hover: none) and (pointer: coarse) {
+      .word, .concept, .theme, .anchor { cursor: pointer; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <main id="site">
+    <section class="cover is-active" id="cover" aria-labelledby="cover-title">
+      <div class="cover-inner">
+        <header class="cover-heading">
+          <h1 class="cover-title" id="cover-title">SMOOTH / ROUGH</h1>
+          <p class="cover-deck">An interactive study of how smooth and rough move from physical texture into metaphorical language</p>
+        </header>
+        <ol class="cover-index-list" aria-label="Open a page">
+          <li><button class="cover-page-link" type="button" data-cover-page="raw">→ DATA</button></li>
+          <li><button class="cover-page-link" type="button" data-cover-page="mapping">→ MAPPING</button></li>
+          <li><button class="cover-page-link" type="button" data-cover-page="story">→ INTERPRETATION</button></li>
+          <li><button class="cover-page-link" type="button" data-cover-page="references">→ REFERENCES</button></li>
+        </ol>
+        <div class="cover-symbols" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#fff" stroke="#000" stroke-width="1.75" vector-effect="non-scaling-stroke" /></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 1.65L17.95 11.27A7 7 0 1 1 6.05 11.27Z" fill="#000" /></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 3L21 20H3Z" fill="#fff" stroke="#000" stroke-width="1.75" vector-effect="non-scaling-stroke" /></svg>
+        </div>
+        <p class="cover-turn">Click the black side tabs <span class="cover-tab-sample" aria-hidden="true"></span> to turn pages.</p>
+        <div class="cover-notes">
+          <div class="cover-note">*Source data: Gutiérrez et al. (2016) annotated 8,592 adjective–noun phrases as literal or metaphorical, using combinations occurring at least ten times in a 4.58-billion-token corpus. This site isolates the smooth and rough subset. Each noun is a recorded partner in a phrase such as <i>smooth operation</i> or <i>rough estimate</i>; frequency is its corpus count.</div>
+          <div class="cover-note">*On the map, scroll or drag vertically to reveal more nouns. Use the filters to compare shared nouns, concepts, and themes.</div>
+          <div class="cover-note">*In the chart, hover or tap a mark for details. Click to pin a card, drag its title to move it, and use × to close it.</div>
+        </div>
+      </div>
+    </section>
+    <nav class="page-index" aria-label="Pages">
+      <button class="page-tab on-right" type="button" data-page="raw" aria-label="Raw data"></button>
+      <button class="page-tab on-right" type="button" data-page="mapping" aria-label="Mapping"></button>
+      <button class="page-tab on-right" type="button" data-page="story" aria-label="Interpretation chart"></button>
+      <button class="page-tab on-right" type="button" data-page="references" aria-label="References"></button>
+    </nav>
+
+    <section class="page" data-page-panel="raw" aria-label="Raw data">
+      <div class="page-scroll">
+        <div class="raw-grid" id="raw-grid"></div>
+      </div>
+    </section>
+
+    <section class="page" data-page-panel="mapping" aria-label="Mapping">
+      <div id="map" aria-label="Semantic map of smooth and rough noun associations">
+        <div class="map-toolbar">
+          <div class="view-controls" aria-label="Map display">
+            <button class="view-button" type="button" data-view="shared" aria-pressed="false">Shared</button>
+            <button class="view-button" type="button" data-view="nouns" aria-pressed="false">Nouns</button>
+            <button class="view-button" type="button" data-view="concepts" aria-pressed="false">Concepts</button>
+            <button class="view-button" type="button" data-view="themes" aria-pressed="false">Themes</button>
+          </div>
+          <div class="controls">
+            <label class="control-row">
+              <span class="control-label">Size</span>
+              <span class="range-control" id="size-control">
+                <span class="minus" aria-hidden="true">−</span>
+                <span class="plus" aria-hidden="true">+</span>
+                <input id="label-scale" type="range" min="0.7" max="1.45" step="0.02" value="1.04" aria-label="Label size" />
+              </span>
+            </label>
+            <label class="control-row">
+              <span class="control-label">Content</span>
+              <span class="range-control" id="content-control">
+                <span class="minus" aria-hidden="true">−</span>
+                <span class="plus" aria-hidden="true">+</span>
+                <input id="content-scale" type="range" min="0" max="1" step="0.001" value="0" aria-label="Visible content" />
+              </span>
+            </label>
+          </div>
+        </div>
+        <svg id="map-svg" role="img" aria-label="Smooth and rough noun map"></svg>
+      </div>
+    </section>
+
+    <section class="page" data-page-panel="story" aria-label="Interpretation chart">
+      <div class="story-scroll">
+        <div class="story-layout">
+          <div class="story-plot" id="story-plot">
+            <svg id="story-svg" role="img" aria-label="Representative smooth, rough, and shared noun phrases arranged by semantic level"></svg>
+            <div class="story-tooltip" id="story-tooltip" role="tooltip"></div>
+          </div>
+          <aside class="story-side">
+            <div class="story-legend" aria-label="Legend">
+              <div class="story-legend-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="#fff" stroke="#000" stroke-width="1.75" /></svg>
+                <span>Smooth (n.)</span>
+              </div>
+              <div class="story-legend-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.65L17.95 11.27A7 7 0 1 1 6.05 11.27Z" fill="#000" /></svg>
+                <span>Shared (n.)</span>
+              </div>
+              <div class="story-legend-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L21 20H3Z" fill="#fff" stroke="#000" stroke-width="1.75" /></svg>
+                <span>Rough (n.)</span>
+              </div>
+            </div>
+            <div class="story-summary" aria-label="Summary">
+              <h2 class="story-summary-title">
+                <span>SMOOTH AS REMOVAL</span>
+                <span>ROUGH AS MARKING</span>
+              </h2>
+              <p>At the literal level, smooth and rough operate as expected opposites across surfaces, materials, and physical contact.</p>
+              <p>In metaphorical uses, the opposition becomes asymmetric. Smooth tends to describe friction, interruption, or irregularity after it has been reduced: a smooth operation, transition, or performance. Rough more often makes a residual condition explicit: a rough passage, time, draft, or estimate.</p>
+              <p>Shared nouns show that the contrast belongs to context rather than to the noun alone. Their horizontal position records the balance between smooth and rough frequency; size records their combined frequency.</p>
+              <p class="story-summary-conclusion">Smooth presents the condition after friction is reduced. Rough marks what remains unresolved.</p>
+              <p class="story-summary-note">This is a pattern in this dataset, not a universal definition.</p>
+            </div>
+          </aside>
+          <div class="story-pinned-layer" id="story-pinned-layer" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" data-page-panel="references" aria-label="References">
+      <div class="page-scroll">
+        <div class="reference-grid">
+          <h2 class="reference-title">REFERENCES</h2>
+
+          <div class="reference-note">Dataset: Gutiérrez et al. (2016), <i>AN phrase annotations</i>. This website uses the smooth and rough subset of the authors’ annotated adjective–noun data.</div>
+
+          <div class="reference-note">Processing note: AI-assisted methods were used to help organize the large set of phrases into provisional semantic groups and to structure the interactive data. The groupings and representative examples were manually reviewed and revised; the source dataset’s literal/metaphorical labels and frequency counts were retained.</div>
+
+          <div class="reference-number">[1]</div>
+          <div class="reference-entry">Gutiérrez, E. D., Shutova, E., Marghetis, T., &amp; Bergen, B. K. (2016). Literal and metaphorical senses in compositional distributional semantic models. In <i>Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)</i> (pp. 183–193). Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/P16-1018" target="_blank" rel="noopener noreferrer">https://doi.org/10.18653/v1/P16-1018</a></div>
+
+          <div class="reference-number">[2]</div>
+          <div class="reference-entry">Kashkin, E., &amp; Vinogradova, O. (2015). The domain of surface texture. <i>Basic Research Program Working Papers</i>, 30/LNG/2015. National Research University Higher School of Economics. <a href="https://doi.org/10.2139/ssrn.2698127" target="_blank" rel="noopener noreferrer">https://doi.org/10.2139/ssrn.2698127</a></div>
+
+          <div class="reference-number">[3]</div>
+          <div class="reference-entry">Hurtienne, J., &amp; Reinhardt, D. (2017). Texture metaphors and tangible interaction: No smooth relationship? In <i>Proceedings of the Eleventh International Conference on Tangible, Embedded, and Embodied Interaction</i> (pp. 79–87). Association for Computing Machinery. <a href="https://doi.org/10.1145/3024969.3024986" target="_blank" rel="noopener noreferrer">https://doi.org/10.1145/3024969.3024986</a></div>
+
+          <div class="reference-number">[4]</div>
+          <div class="reference-entry">Nagano, H., Okamoto, S., &amp; Yamada, Y. (2014). Semantically layered structure of tactile textures. In M. Auvray &amp; C. Duriez (Eds.), <i>Haptics: Neuroscience, devices, modeling, and applications</i> (pp. 3–9). Springer. <a href="https://doi.org/10.1007/978-3-662-44193-0_1" target="_blank" rel="noopener noreferrer">https://doi.org/10.1007/978-3-662-44193-0_1</a></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="./d3.min.js"></script>
+  <script src="./data.js"></script>
+  <script>
+    (() => {
+      const BASE_W = 2200;
+      const BASE_H = 1600;
+      const svg = d3.select('#map-svg');
+      const root = svg.append('g');
+      const data = (window.MAP_DATA || []).map(d => ({ ...d }));
+      const rawRows = data.flatMap(entry => entry.associations.map(association => ({
+        adjective: association.adjective,
+        noun: entry.noun,
+        sense: entry.sense,
+        count: association.count
+      })));
+      const adjectivesByNoun = d3.rollup(rawRows, rows => new Set(rows.map(row => row.adjective)), row => row.noun);
+      const sharedNouns = new Set([...adjectivesByNoun].filter(([, adjectives]) => adjectives.has('smooth') && adjectives.has('rough')).map(([noun]) => noun));
+
+      const adjectiveCount = (entry, adjective) => adjective === 'smooth' ? entry.smoothCount : entry.roughCount;
+      const sharedFrequencyMax = d3.max(data, entry => Math.max(entry.smoothCount, entry.roughCount)) || 1;
+
+      function buildStatCard(title, total, literal, metaphorical) {
+        const card = document.createElement('section');
+        card.className = 'raw-stat-card';
+        card.setAttribute('aria-label', `${title}: ${total} total, ${literal} literal, ${metaphorical} metaphorical`);
+
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const pie = document.createElementNS(svgNS, 'svg');
+        pie.setAttribute('class', 'raw-pie');
+        pie.setAttribute('viewBox', '0 0 100 100');
+        pie.setAttribute('role', 'img');
+        pie.setAttribute('aria-label', `${Math.round((total ? literal / total : 0) * 1000) / 10}% literal and ${Math.round((total ? metaphorical / total : 0) * 1000) / 10}% metaphorical`);
+
+        const literalRatio = total ? literal / total : 0;
+        const boundaryAngle = Math.PI * 2 * literalRatio;
+        const boundaryX = 50 + 49 * Math.cos(boundaryAngle);
+        const boundaryY = 50 + 49 * Math.sin(boundaryAngle);
+        const metaphoricalRatio = 1 - literalRatio;
+
+        const literalSlice = document.createElementNS(svgNS, 'path');
+        literalSlice.setAttribute('class', 'raw-pie-slice literal');
+        literalSlice.dataset.sense = 'literal';
+        literalSlice.setAttribute('tabindex', '0');
+        literalSlice.setAttribute('role', 'button');
+        literalSlice.setAttribute('aria-label', `Highlight literal: ${Math.round(literalRatio * 1000) / 10}%`);
+        literalSlice.setAttribute('d', `M 50 50 L 99 50 A 49 49 0 ${literalRatio > .5 ? 1 : 0} 1 ${boundaryX} ${boundaryY} Z`);
+        const metaphoricalSlice = document.createElementNS(svgNS, 'path');
+        metaphoricalSlice.setAttribute('class', 'raw-pie-slice metaphorical');
+        metaphoricalSlice.dataset.sense = 'metaphorical';
+        metaphoricalSlice.setAttribute('tabindex', '0');
+        metaphoricalSlice.setAttribute('role', 'button');
+        metaphoricalSlice.setAttribute('aria-label', `Highlight metaphorical: ${Math.round(metaphoricalRatio * 1000) / 10}%`);
+        metaphoricalSlice.setAttribute('d', `M 50 50 L ${boundaryX} ${boundaryY} A 49 49 0 ${metaphoricalRatio > .5 ? 1 : 0} 1 99 50 Z`);
+        const outline = document.createElementNS(svgNS, 'circle');
+        outline.setAttribute('class', 'raw-pie-outline');
+        outline.setAttribute('cx', '50');
+        outline.setAttribute('cy', '50');
+        outline.setAttribute('r', '49');
+        const divider = document.createElementNS(svgNS, 'path');
+        divider.setAttribute('class', 'raw-pie-divider');
+        divider.setAttribute('d', `M 99 50 L 50 50 L ${boundaryX} ${boundaryY}`);
+        pie.append(literalSlice, metaphoricalSlice, outline, divider);
+
+        const summary = document.createElement('div');
+        summary.className = 'raw-stat-summary';
+        const summaryRows = [
+          { className: 'literal', value: literal },
+          { className: 'metaphorical', value: metaphorical }
+        ];
+
+        const totalLine = document.createElement('div');
+        totalLine.className = 'raw-stat-line total';
+        const heading = document.createElement('span');
+        heading.textContent = title;
+        const totalText = document.createElement('span');
+        totalText.className = 'raw-stat-total';
+        totalText.textContent = `(${total} in total)`;
+        totalLine.append(heading, totalText);
+        summary.appendChild(totalLine);
+
+        summaryRows.forEach(row => {
+          const line = document.createElement('div');
+          line.className = `raw-stat-line ${row.className}`;
+          const label = document.createElement('span');
+          label.textContent = `${row.value} ${row.className}`;
+          const percent = document.createElement('span');
+          percent.className = `raw-percent ${row.className}`;
+          percent.dataset.sense = row.className;
+          percent.tabIndex = 0;
+          percent.setAttribute('role', 'button');
+          percent.setAttribute('aria-label', `Highlight ${row.className}: ${Math.round((total ? row.value / total : 0) * 1000) / 10}%`);
+          percent.textContent = `${Math.round((total ? row.value / total : 0) * 1000) / 10}%`;
+          line.append(label, percent);
+          summary.appendChild(line);
+        });
+
+        card.append(pie, summary);
+        return card;
+      }
+
+      function buildRawGroup(adjective) {
+        const entries = data
+          .filter(entry => adjectiveCount(entry, adjective) > 0)
+          .sort((a, b) => d3.descending(adjectiveCount(a, adjective), adjectiveCount(b, adjective)));
+        const literalEntries = entries.filter(entry => entry.sense === 'literal');
+        const metaphoricalEntries = entries.filter(entry => entry.sense === 'metaphorical');
+        const sumCounts = rows => d3.sum(rows, entry => adjectiveCount(entry, adjective));
+
+        const group = document.createElement('section');
+        group.className = 'raw-group';
+        group.dataset.adjective = adjective;
+        group.setAttribute('aria-label', `${adjective} noun counts`);
+
+        const header = document.createElement('div');
+        header.className = 'raw-header';
+        const title = document.createElement('h2');
+        title.className = 'raw-title';
+        title.textContent = `${adjective[0].toUpperCase()}${adjective.slice(1)} (n.)`;
+        const nounHeader = document.createElement('div');
+        nounHeader.className = 'raw-column-header';
+        nounHeader.textContent = 'noun';
+        const countHeader = document.createElement('div');
+        countHeader.className = 'raw-column-header';
+        countHeader.textContent = 'frequency';
+        header.append(title, nounHeader, countHeader);
+
+        const body = document.createElement('div');
+        body.className = 'raw-body';
+        const stats = document.createElement('div');
+        stats.className = 'raw-stats';
+        stats.append(
+          buildStatCard('nouns', entries.length, literalEntries.length, metaphoricalEntries.length),
+          buildStatCard('frequency', sumCounts(entries), sumCounts(literalEntries), sumCounts(metaphoricalEntries))
+        );
+
+        const list = document.createElement('div');
+        list.className = 'raw-list';
+        entries.forEach(entry => {
+          const count = adjectiveCount(entry, adjective);
+          const row = document.createElement('div');
+          row.className = 'raw-row';
+          const noun = document.createElement('div');
+          noun.className = 'raw-noun';
+          noun.textContent = entry.noun;
+          const barCell = document.createElement('div');
+          barCell.className = 'raw-bar-cell';
+          const bar = document.createElement('div');
+          bar.className = `raw-bar ${entry.sense}`;
+          bar.style.setProperty('--bar-width', `${count / sharedFrequencyMax * 100}%`);
+          bar.dataset.count = count;
+          bar.tabIndex = 0;
+          bar.setAttribute('role', 'img');
+          bar.setAttribute('aria-label', `${entry.noun}: frequency ${count}`);
+          barCell.appendChild(bar);
+          row.append(noun, barCell);
+          list.appendChild(row);
+        });
+
+        body.append(stats, list);
+        group.append(header, body);
+        return group;
+      }
+      const rawGrid = document.getElementById('raw-grid');
+      rawGrid.append(buildRawGroup('smooth'), buildRawGroup('rough'));
+
+      function setRawInspection(activeGroup, sense = '') {
+        rawGrid.classList.toggle('has-inspection', Boolean(activeGroup));
+        rawGrid.querySelectorAll('.raw-group').forEach(group => {
+          group.classList.toggle('is-inspecting', group === activeGroup);
+          if (group === activeGroup) group.dataset.activeSense = sense;
+          else delete group.dataset.activeSense;
+        });
+      }
+
+      rawGrid.querySelectorAll('.raw-percent, .raw-pie-slice').forEach(target => {
+        const group = target.closest('.raw-group');
+        const sense = target.dataset.sense;
+        target.addEventListener('pointerenter', event => {
+          if (event.pointerType !== 'touch') setRawInspection(group, sense);
+        });
+        target.addEventListener('pointerleave', event => {
+          if (event.pointerType !== 'touch') setRawInspection(null);
+        });
+        target.addEventListener('focus', () => setRawInspection(group, sense));
+        target.addEventListener('blur', () => setRawInspection(null));
+        target.addEventListener('click', () => {
+          if (!matchMedia('(hover: none)').matches) return;
+          const isActive = group.classList.contains('is-inspecting') && group.dataset.activeSense === sense;
+          setRawInspection(isActive ? null : group, isActive ? '' : sense);
+        });
+      });
+
+      const storyReviewConcepts = new Set(['Polished persona', 'Marginalized persona', 'Social disorder']);
+      const storySelectionGroups = [
+        { sense: 'literal', concepts: ['Material finish', 'Surface regularity'], limit: 4 },
+        { sense: 'literal', concepts: ['Bearing surface and terrain', 'Contact and ride quality'], limit: 4 },
+        { sense: 'literal', concepts: ['Bodily surface', 'Physical contact'], limit: 3 },
+        { sense: 'literal', concepts: ['Material consistency'], limit: 3 },
+        { sense: 'metaphorical', adjective: 'smooth', concepts: ['Uninterrupted operation', 'Unobstructed transition', 'Easy continuation'], limit: 5 },
+        { sense: 'metaphorical', adjective: 'smooth', concepts: ['Polished expression', 'Finished presentation', 'Coherent structure'], limit: 4 },
+        { sense: 'metaphorical', adjective: 'smooth', concepts: ['Efficient coordination', 'Social ease', 'Reduced conflict', 'Effortless experience'], limit: 4 },
+        { sense: 'metaphorical', adjective: 'rough', concepts: ['Controlled imprecision'], limit: 5 },
+        { sense: 'metaphorical', adjective: 'rough', concepts: ['Lived difficulty', 'Operational friction', 'Adverse conditions', 'Difficult passage', 'Irregular difficulty'], limit: 5 },
+        { sense: 'metaphorical', adjective: 'rough', concepts: ['Provisional form', 'Visible irregularity'], limit: 4 },
+        { sense: 'metaphorical', adjective: 'rough', concepts: ['Harsh force'], limit: 3 }
+      ];
+      const storySelected = new Map();
+      const storyKey = node => `${node.sense}|${node.noun}`;
+
+      storySelectionGroups.forEach(group => {
+        data.filter(node => node.sense === group.sense)
+          .map(node => ({
+            node,
+            score: d3.sum(node.associations.filter(association =>
+              (!group.adjective || association.adjective === group.adjective) &&
+              group.concepts.includes(association.localConcept)
+            ), association => association.count)
+          }))
+          .filter(candidate => candidate.score >= 50)
+          .sort((a, b) => d3.descending(a.score, b.score))
+          .slice(0, group.limit)
+          .forEach(candidate => storySelected.set(storyKey(candidate.node), candidate.node));
+      });
+
+      ['literal', 'metaphorical'].forEach(sense => {
+        data.filter(node =>
+          node.sense === sense && node.smoothCount > 0 && node.roughCount > 0 && node.total >= 100 &&
+          node.associations.some(association => !storyReviewConcepts.has(association.localConcept))
+        )
+          .sort((a, b) => d3.descending(a.total, b.total))
+          .slice(0, sense === 'literal' ? 7 : 9)
+          .forEach(node => storySelected.set(storyKey(node), node));
+      });
+
+      const storyConceptLevel = new Map([
+        ['Material finish', .08], ['Surface regularity', .10], ['Material consistency', .13],
+        ['Bearing surface and terrain', .22], ['Bodily surface', .24], ['Physical contact', .27], ['Contact and ride quality', .29],
+        ['Uninterrupted operation', .40], ['Operational friction', .42], ['Unobstructed transition', .46], ['Difficult passage', .48], ['Easy continuation', .50],
+        ['Effortless experience', .56], ['Lived difficulty', .58], ['Adverse conditions', .61], ['Irregular difficulty', .63], ['Harsh force', .65],
+        ['Finished presentation', .69], ['Provisional form', .70], ['Polished expression', .72], ['Visible irregularity', .74],
+        ['Efficient coordination', .79], ['Social ease', .81], ['Reduced conflict', .84],
+        ['Coherent structure', .91], ['Controlled imprecision', .94]
+      ]);
+      const storyHash = value => {
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i += 1) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+        return (hash >>> 0) / 4294967295;
+      };
+      const storyNodes = [...storySelected.values()].map(node => {
+        const reliable = node.associations.filter(association => !storyReviewConcepts.has(association.localConcept));
+        const weighted = reliable.filter(association => storyConceptLevel.has(association.localConcept));
+        const level = weighted.length
+          ? d3.sum(weighted, association => storyConceptLevel.get(association.localConcept) * association.count) / d3.sum(weighted, association => association.count)
+          : node.sense === 'literal' ? .27 : .66;
+        const shared = node.smoothCount > 0 && node.roughCount > 0;
+        const side = shared ? 'shared' : node.smoothCount >= node.roughCount ? 'smooth' : 'rough';
+        const primaryAssociation = [...reliable].sort((a, b) => d3.descending(a.count, b.count))[0] || node.associations[0];
+        return { ...node, shared, side, level, primaryAssociation };
+      });
+
+      const storyPlot = document.getElementById('story-plot');
+      const storyLayout = document.querySelector('.story-layout');
+      const storySvg = d3.select('#story-svg');
+      const storyTooltip = document.getElementById('story-tooltip');
+      const storyPinnedLayer = document.getElementById('story-pinned-layer');
+      const storyPinnedKeys = new Set();
+      const storyPinnedPositions = new Map();
+      let storyRenderedNodes = [];
+      const storyBands = [
+        { top: 0, bottom: .17, label: ['surface /', 'material'], sense: 'literal' },
+        { top: .17, bottom: .33, label: ['body /', 'contact'], sense: 'literal' },
+        { top: .33, bottom: .53, label: ['operation /', 'transition'], sense: 'metaphorical' },
+        { top: .53, bottom: .67, label: ['experience /', 'resistance'], sense: 'metaphorical' },
+        { top: .67, bottom: .76, label: ['form /', 'refinement'], sense: 'metaphorical' },
+        { top: .76, bottom: .88, label: ['social', 'coordination'], sense: 'metaphorical' },
+        { top: .88, bottom: 1, label: ['epistemic /', 'coherence'], sense: 'metaphorical' }
+      ];
+
+      function storyIllustrativeExample(node) {
+        const association = node.primaryAssociation;
+        const noun = node.noun;
+        const phrase = association.phrase;
+        const concept = association.localConcept;
+        if (node.sense === 'literal') return `The phrase ${phrase} describes a physical texture, surface, or contact quality.`;
+        if (concept === 'Controlled imprecision') return `The report gives only a rough ${noun}.`;
+        if (concept === 'Provisional form') return `They prepared a rough ${noun} for review.`;
+        if (concept === 'Visible irregularity') return `The phrase rough ${noun} keeps irregularity visible.`;
+        if (['Lived difficulty', 'Adverse conditions', 'Harsh force', 'Difficult passage', 'Irregular difficulty'].includes(concept)) return `They described it as a rough ${noun}.`;
+        if (concept === 'Operational friction') return `The project had a rough ${noun}.`;
+        if (concept === 'Uninterrupted operation') return `The system maintained smooth ${noun}.`;
+        if (['Unobstructed transition', 'Easy continuation'].includes(concept)) return `The team completed a smooth ${noun}.`;
+        if (['Effortless experience', 'Social ease', 'Reduced conflict'].includes(concept)) return `They hoped for a smooth ${noun}.`;
+        if (['Polished expression', 'Finished presentation', 'Coherent structure'].includes(concept)) return `The phrase smooth ${noun} presents fluent or polished performance.`;
+        if (concept === 'Efficient coordination') return `The event depended on smooth ${noun}.`;
+        return `The phrase ${phrase} illustrates this use.`;
+      }
+
+      function storyDropPath(radius) {
+        return `M0,${-1.55 * radius}L${.8503 * radius},${-.1763 * radius}A${radius},${radius} 0 1 1 ${-.8503 * radius},${-.1763 * radius}Z`;
+      }
+
+      function fillStoryTooltip(element, node, closeHandler = null) {
+        element.replaceChildren();
+        element.classList.toggle('is-pinned', Boolean(closeHandler));
+        const title = document.createElement('div');
+        title.className = 'story-tooltip-title';
+        title.textContent = node.noun;
+        const phraseLine = document.createElement('div');
+        phraseLine.className = 'story-tooltip-line';
+        phraseLine.textContent = node.associations.map(association => association.phrase).join(' · ');
+        const countLine = document.createElement('div');
+        countLine.className = 'story-tooltip-line';
+        const frequencies = [];
+        if (node.smoothCount > 0) frequencies.push(`smooth ${node.smoothCount.toLocaleString('en-US')}`);
+        if (node.roughCount > 0) frequencies.push(`rough ${node.roughCount.toLocaleString('en-US')}`);
+        countLine.textContent = `Frequency: ${frequencies.join(' · ')}`;
+        const conceptLine = document.createElement('div');
+        conceptLine.className = 'story-tooltip-line';
+        conceptLine.textContent = node.primaryAssociation.localConcept;
+        const exampleLine = document.createElement('div');
+        exampleLine.className = 'story-tooltip-line';
+        exampleLine.textContent = `Illustrative example: ${storyIllustrativeExample(node)}`;
+        element.append(title, phraseLine, countLine, conceptLine, exampleLine);
+        if (closeHandler) {
+          const close = document.createElement('button');
+          close.className = 'story-tooltip-close';
+          close.type = 'button';
+          close.setAttribute('aria-label', 'Close details');
+          close.textContent = '×';
+          const closePinnedCard = closeEvent => {
+            closeEvent.preventDefault();
+            closeEvent.stopPropagation();
+            closeHandler();
+          };
+          close.addEventListener('pointerdown', closePinnedCard);
+          close.addEventListener('click', closePinnedCard);
+          element.appendChild(close);
+        }
+      }
+
+      function positionStoryTooltip(element, node, index = 0, event = null, container = storyPlot) {
+        const bounds = container.getBoundingClientRect();
+        const localX = event && Number.isFinite(event.clientX) ? event.clientX - bounds.left : node.x;
+        const localY = event && Number.isFinite(event.clientY) ? event.clientY - bounds.top : node.y;
+        const tooltipWidth = element.offsetWidth;
+        const tooltipHeight = element.offsetHeight;
+        const stagger = index * 12;
+        let left = localX + 14 + stagger;
+        let top = localY + 14 + stagger;
+        if (left + tooltipWidth > bounds.width - 8) left = localX - tooltipWidth - 14 - stagger;
+        if (top + tooltipHeight > bounds.height - 8) top = localY - tooltipHeight - 14 - stagger;
+        element.style.left = `${Math.max(8, Math.min(bounds.width - tooltipWidth - 8, left))}px`;
+        element.style.top = `${Math.max(8, Math.min(bounds.height - tooltipHeight - 8, top))}px`;
+      }
+
+      function showStoryTooltip(event, node) {
+        fillStoryTooltip(storyTooltip, node);
+        storyTooltip.classList.remove('is-pinned');
+        storyTooltip.classList.add('is-visible');
+        positionStoryTooltip(storyTooltip, node, 0, event);
+      }
+
+      function hideStoryTooltip() {
+        storyTooltip.classList.remove('is-visible');
+      }
+
+      function clampStoryCardPosition(card, left, top) {
+        const maxLeft = Math.max(8, storyLayout.clientWidth - card.offsetWidth - 8);
+        const maxTop = Math.max(8, storyLayout.clientHeight - card.offsetHeight - 8);
+        return {
+          left: Math.max(8, Math.min(maxLeft, left)),
+          top: Math.max(8, Math.min(maxTop, top))
+        };
+      }
+
+      function enableStoryCardDrag(card, key) {
+        const handle = card.querySelector('.story-tooltip-title');
+        handle.addEventListener('pointerdown', event => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          event.stopPropagation();
+          storyPinnedLayer.appendChild(card);
+          const startLeft = Number.parseFloat(card.style.left) || card.offsetLeft;
+          const startTop = Number.parseFloat(card.style.top) || card.offsetTop;
+          const startX = event.clientX;
+          const startY = event.clientY;
+          handle.setPointerCapture(event.pointerId);
+          const moveCard = moveEvent => {
+            const next = clampStoryCardPosition(
+              card,
+              startLeft + moveEvent.clientX - startX,
+              startTop + moveEvent.clientY - startY
+            );
+            card.style.left = `${next.left}px`;
+            card.style.top = `${next.top}px`;
+            storyPinnedPositions.set(key, next);
+          };
+          const stopDragging = stopEvent => {
+            handle.releasePointerCapture(stopEvent.pointerId);
+            handle.removeEventListener('pointermove', moveCard);
+            handle.removeEventListener('pointerup', stopDragging);
+            handle.removeEventListener('pointercancel', stopDragging);
+          };
+          handle.addEventListener('pointermove', moveCard);
+          handle.addEventListener('pointerup', stopDragging);
+          handle.addEventListener('pointercancel', stopDragging);
+        });
+      }
+
+      function renderPinnedStoryTooltips() {
+        storyPinnedLayer.replaceChildren();
+        [...storyPinnedKeys].forEach((key, index) => {
+          const node = storyRenderedNodes.find(candidate => storyKey(candidate) === key);
+          if (!node) {
+            storyPinnedKeys.delete(key);
+            return;
+          }
+          const card = document.createElement('div');
+          card.className = 'story-tooltip story-pinned-card is-visible is-pinned';
+          card.setAttribute('role', 'dialog');
+          card.setAttribute('aria-label', `${node.noun} details`);
+          fillStoryTooltip(card, node, () => {
+            storyPinnedKeys.delete(key);
+            storyPinnedPositions.delete(key);
+            renderPinnedStoryTooltips();
+          });
+          storyPinnedLayer.appendChild(card);
+          const savedPosition = storyPinnedPositions.get(key);
+          if (savedPosition) {
+            const next = clampStoryCardPosition(card, savedPosition.left, savedPosition.top);
+            card.style.left = `${next.left}px`;
+            card.style.top = `${next.top}px`;
+            storyPinnedPositions.set(key, next);
+          } else {
+            positionStoryTooltip(card, node, index, null, storyLayout);
+            storyPinnedPositions.set(key, {
+              left: Number.parseFloat(card.style.left) || card.offsetLeft,
+              top: Number.parseFloat(card.style.top) || card.offsetTop
+            });
+          }
+          enableStoryCardDrag(card, key);
+        });
+      }
+
+      function renderStory() {
+        const bounds = storyPlot.getBoundingClientRect();
+        const width = Math.max(320, bounds.width);
+        const height = Math.max(540, bounds.height);
+        const dividerY = height * .33;
+        const labelGutter = width < 600 ? width / 3 : width / 4;
+        const dashedStart = Math.max(46, labelGutter * .30);
+        const solidStart = 8;
+        const plotLeft = labelGutter + 16;
+        const plotRight = width - 14;
+        const pointWidth = plotRight - plotLeft;
+        storySvg.attr('viewBox', `0 0 ${width} ${height}`);
+        storySvg.selectAll('*').remove();
+        const separators = storyBands.slice(0, -1).map(band => band.bottom).filter(position => position !== .33);
+        storySvg.append('g').selectAll('line.story-band-rule')
+          .data(separators)
+          .join('line')
+          .attr('class', 'story-band-rule')
+          .attr('x1', dashedStart)
+          .attr('x2', width - 8)
+          .attr('y1', position => position * height)
+          .attr('y2', position => position * height);
+        storySvg.append('line').attr('class', 'story-rule').attr('x1', solidStart).attr('x2', width - 8).attr('y1', .5).attr('y2', .5);
+        storySvg.append('line').attr('class', 'story-rule').attr('x1', solidStart).attr('x2', width - 8).attr('y1', dividerY).attr('y2', dividerY);
+        storySvg.append('line').attr('class', 'story-rule').attr('x1', solidStart).attr('x2', width - 8).attr('y1', height - .5).attr('y2', height - .5);
+
+        const desktopStory = matchMedia('(min-width: 721px)').matches;
+        const minRadius = desktopStory ? 8 : 6;
+        const maxRadius = desktopStory
+          ? Math.min(52, pointWidth / 8, height / 24)
+          : Math.min(28, pointWidth / 11, height / 40);
+        const size = d3.scaleSqrt()
+          .domain(d3.extent(storyNodes, node => node.total))
+          .range([minRadius, maxRadius]);
+        const plotNodes = storyNodes.map(node => {
+          const roughShare = node.total > 0 ? node.roughCount / node.total : .5;
+          const band = storyBands.find(candidate => node.level >= candidate.top && node.level <= candidate.bottom) || storyBands[storyBands.length - 1];
+          const targetX = plotLeft + roughShare * pointWidth;
+          const horizontalFreedom = pointWidth * .28;
+          const zoneLeft = Math.max(plotLeft, targetX - horizontalFreedom);
+          const zoneRight = Math.min(plotRight, targetX + horizontalFreedom);
+          const targetY = Math.max(band.top, Math.min(band.bottom, node.level + (storyHash(`${node.noun}|y`) - .5) * .025)) * height;
+          const radius = size(node.total);
+          const markExtent = radius * (node.side === 'rough' ? 1.35 : node.side === 'shared' ? 1.55 : 1);
+          return { ...node, band, radius, markExtent, zoneLeft, zoneRight, targetX, targetY, x: targetX, y: targetY };
+        });
+        const simulation = d3.forceSimulation(plotNodes)
+          .force('x', d3.forceX(node => node.targetX).strength(1))
+          .force('y', d3.forceY(node => node.targetY).strength(.30))
+          .force('collide', d3.forceCollide(node => node.markExtent + 5).iterations(6))
+          .alphaDecay(.018)
+          .stop();
+        for (let step = 0; step < 520; step += 1) {
+          simulation.tick();
+          plotNodes.forEach(node => {
+            const pad = node.markExtent + 7;
+            const safeZoneLeft = node.zoneLeft + pad;
+            const safeZoneRight = node.zoneRight - pad;
+            node.x = safeZoneLeft <= safeZoneRight ? Math.max(safeZoneLeft, Math.min(safeZoneRight, node.x)) : (node.zoneLeft + node.zoneRight) / 2;
+            const bandTop = node.band.top * height + pad;
+            const bandBottom = node.band.bottom * height - pad;
+            node.y = bandTop <= bandBottom ? Math.max(bandTop, Math.min(bandBottom, node.y)) : (node.band.top + node.band.bottom) * height / 2;
+          });
+        }
+        storyRenderedNodes = plotNodes;
+
+        const groups = storySvg.append('g').selectAll('g.story-node')
+          .data(plotNodes, storyKey)
+          .join('g')
+          .attr('class', node => `story-node is-${node.side}`)
+          .attr('transform', node => `translate(${node.x},${node.y})`)
+          .attr('tabindex', 0)
+          .attr('role', 'button')
+          .attr('aria-label', node => `${node.noun}, ${node.sense}, frequency ${node.total}`);
+        groups.append('path')
+          .attr('class', 'story-mark')
+          .attr('d', node => node.shared
+            ? storyDropPath(node.radius)
+            : d3.symbol().type(node.side === 'smooth' ? d3.symbolCircle : d3.symbolTriangle).size(Math.PI * node.radius * node.radius)()
+          );
+        groups.on('pointerenter', (event, node) => {
+          if (event.pointerType !== 'touch') showStoryTooltip(event, node);
+        }).on('pointermove', (event, node) => {
+          if (event.pointerType !== 'touch') showStoryTooltip(event, node);
+        }).on('pointerleave', event => {
+          if (event.pointerType !== 'touch') hideStoryTooltip();
+        }).on('focus', (event, node) => {
+          showStoryTooltip(null, node);
+        }).on('blur', hideStoryTooltip).on('click', (event, node) => {
+          event.stopPropagation();
+          const key = storyKey(node);
+          storyPinnedKeys.delete(key);
+          storyPinnedKeys.add(key);
+          renderPinnedStoryTooltips();
+        });
+        const labels = storySvg.append('g');
+        storyBands.forEach(band => {
+          const centerY = (band.top + band.bottom) * height / 2;
+          const text = labels.append('text')
+            .attr('class', 'story-note story-band-label')
+            .attr('x', Math.max(38, labelGutter * .34))
+            .attr('y', centerY - 9);
+          band.label.forEach((line, lineIndex) => text.append('tspan')
+            .attr('x', Math.max(38, labelGutter * .34))
+            .attr('dy', lineIndex === 0 ? 0 : '1.15em')
+            .text(line));
+        });
+        const sideLabelX = 28;
+        labels.append('text')
+          .attr('class', 'story-note story-band-label')
+          .attr('x', sideLabelX)
+          .attr('y', height * .165)
+          .attr('text-anchor', 'middle')
+          .attr('transform', `rotate(-90,${sideLabelX},${height * .165})`)
+          .text('LITERAL');
+        labels.append('text')
+          .attr('class', 'story-note story-band-label')
+          .attr('x', sideLabelX)
+          .attr('y', height * .655)
+          .attr('text-anchor', 'middle')
+          .attr('transform', `rotate(-90,${sideLabelX},${height * .655})`)
+          .text('METAPHORICAL');
+        hideStoryTooltip();
+        renderPinnedStoryTooltips();
+      }
+
+      const smoothAnchor = { xPct: .075, yPct: .34, name: 'smooth' };
+      const roughAnchor = { xPct: .925, yPct: .66, name: 'rough' };
+      let canvasW = BASE_W;
+      let canvasH = BASE_H;
+      let plotTop = 64;
+      let plotHeight = BASE_H - plotTop;
+      const PLOT_Y_MIN = .065;
+      const PLOT_Y_MAX = .955;
+      let reveal = 0;
+      let itemScale = 1.04;
+      let viewMode = 'all';
+      const log = v => Math.log1p(v);
+      const bias = d => {
+        const left = log(d.smoothCount);
+        const right = log(d.roughCount);
+        return (right - left) / Math.max(1, right + left);
+      };
+      data.forEach(d => {
+        d.bias = bias(d);
+        d.primaryAssociation = [...d.associations].sort((a, b) => d3.descending(a.count, b.count))[0];
+        d.primaryConceptKey = `${d.sense}|${d.primaryAssociation.localConcept}`;
+      });
+
+      const associationRecords = data.flatMap(node => node.associations.map(association => ({
+        node,
+        association,
+        key: `${node.sense}|${association.localConcept}`
+      })));
+
+      const conceptStats = d3.rollups(
+        associationRecords,
+        records => {
+          const members = [...new Set(records.map(d => d.node))].sort((a, b) => d3.descending(a.total, b.total));
+          const smoothCount = d3.sum(records.filter(d => d.association.adjective === 'smooth'), d => d.association.count);
+          const roughCount = d3.sum(records.filter(d => d.association.adjective === 'rough'), d => d.association.count);
+          const total = smoothCount + roughCount;
+          return {
+            members,
+            primaryMembers: members.filter(d => d.primaryConceptKey === records[0].key),
+            totalCount: members.length,
+            smoothCount,
+            roughCount,
+            total,
+            meanBias: total ? (log(roughCount) - log(smoothCount)) / Math.max(1, log(roughCount) + log(smoothCount)) : 0,
+            largerThemes: [...new Set(records.map(d => d.association.largerTheme))],
+            adjectives: [...new Set(records.map(d => d.association.adjective))]
+          };
+        },
+        d => d.key
+      ).map(([key, value]) => ({
+        key,
+        sense: key.split('|')[0],
+        localConcept: key.slice(key.indexOf('|') + 1),
+        ...value
+      }));
+      const conceptByKey = new Map(conceptStats.map(d => [d.key, d]));
+
+      const hashUnit = value => {
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i++) {
+          hash ^= value.charCodeAt(i);
+          hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0) / 4294967295;
+      };
+
+      function arrangeConceptIslands(sense) {
+        const groups = conceptStats.filter(d => d.sense === sense);
+        const regionTop = sense === 'literal' ? 70 : BASE_H * .515;
+        const regionBottom = sense === 'literal' ? BASE_H * .475 : BASE_H - 60;
+
+        groups.forEach(group => {
+          const noise = hashUnit(group.key);
+          const smoothStrength = log(group.smoothCount);
+          const roughStrength = log(group.roughCount);
+          const roughShare = roughStrength / Math.max(1, smoothStrength + roughStrength);
+          group.labelWidth = Math.max(116, group.localConcept.length * 10.2 + 26);
+          group.labelHeight = 32;
+          group.clusterRadius = Math.max(group.labelWidth * .56, 68) + Math.sqrt(Math.max(1, group.primaryMembers.length)) * 9.5;
+          group.targetX = BASE_W * (.17 + roughShare * .66) + (noise - .5) * 120;
+          group.targetY = regionTop + group.clusterRadius + hashUnit(`${group.key}-y`) * Math.max(1, regionBottom - regionTop - group.clusterRadius * 2);
+          group.x = group.targetX + (hashUnit(`${group.key}-x`) - .5) * 105;
+          group.y = group.targetY + (hashUnit(`${group.key}-drift`) - .5) * 80;
+        });
+
+        const islandSimulation = d3.forceSimulation(groups)
+          .force('x', d3.forceX(d => d.targetX).strength(.16))
+          .force('y', d3.forceY(d => d.targetY).strength(.095))
+          .force('charge', d3.forceManyBody().strength(-560))
+          .force('collide', d3.forceCollide(d => d.clusterRadius + 58).strength(1).iterations(6))
+          .stop();
+        for (let i = 0; i < 420; i++) islandSimulation.tick();
+
+        const keepInsideRegion = group => {
+          const minX = 250 + group.clusterRadius;
+          const maxX = BASE_W - 250 - group.clusterRadius;
+          const minY = regionTop + group.clusterRadius;
+          const maxY = regionBottom - group.clusterRadius;
+          group.x = Math.max(minX, Math.min(maxX, group.x));
+          group.y = Math.max(minY, Math.min(maxY, group.y));
+        };
+        groups.forEach(keepInsideRegion);
+
+        for (let iteration = 0; iteration < 320; iteration++) {
+          for (let i = 0; i < groups.length; i++) {
+            for (let j = i + 1; j < groups.length; j++) {
+              const a = groups[i], b = groups[j];
+              let dx = b.x - a.x, dy = b.y - a.y;
+              let distance = Math.hypot(dx, dy);
+              const minimum = a.clusterRadius + b.clusterRadius + 105;
+              if (distance >= minimum) continue;
+              if (distance < .001) {
+                const angle = hashUnit(`${a.key}-${b.key}`) * Math.PI * 2;
+                dx = Math.cos(angle);
+                dy = Math.sin(angle);
+                distance = 1;
+              }
+              const push = (minimum - distance) * .51;
+              const ux = dx / distance, uy = dy / distance;
+              a.x -= ux * push;
+              a.y -= uy * push;
+              b.x += ux * push;
+              b.y += uy * push;
+            }
+          }
+          groups.forEach(keepInsideRegion);
+        }
+
+        groups.forEach(group => {
+          group.centerXPct = group.x / BASE_W;
+          group.centerYPct = group.y / BASE_H;
+
+          group.primaryMembers.forEach((d, memberIndex) => {
+            const angle = memberIndex * 2.399963229728653 + noiseAngle(group.key);
+            const ring = Math.sqrt(memberIndex) * 11.5;
+            const radiusX = group.labelWidth / 2 + 34 + ring;
+            const radiusY = group.labelHeight / 2 + 34 + ring * .78;
+            const x = group.x + Math.cos(angle) * radiusX + d.bias * 7;
+            const y = group.y + Math.sin(angle) * radiusY;
+            d.xPct = Math.max(.075, Math.min(.925, x / BASE_W));
+            d.yPct = Math.max(sense === 'literal' ? .04 : .515, Math.min(sense === 'literal' ? .475 : .965, y / BASE_H));
+          });
+        });
+      }
+
+      const noiseAngle = value => hashUnit(`${value}-angle`) * Math.PI * 2;
+
+      arrangeConceptIslands('literal');
+      arrangeConceptIslands('metaphorical');
+
+      // Keep every concept label as an empty island centre, with nouns forming
+      // an irregular ring around it instead of a row or packed label pile.
+      conceptStats.forEach(group => {
+        group.primaryMembers.forEach(d => {
+          d.x = d.xPct * BASE_W;
+          d.y = d.yPct * BASE_H;
+          d.homeX = d.x;
+          d.homeY = d.y;
+          d.estimatedRadius = Math.max(13, Math.min(32, d.noun.length * 2.7 + 6));
+        });
+        const simulation = d3.forceSimulation(group.primaryMembers)
+          .force('x', d3.forceX(d => d.homeX).strength(.7))
+          .force('y', d3.forceY(d => d.homeY).strength(.7))
+          .force('collide', d3.forceCollide(d => d.estimatedRadius + 2).strength(.58).iterations(2))
+          .stop();
+        for (let i = 0; i < 130; i++) simulation.tick();
+        group.primaryMembers.forEach(d => {
+          const safeX = group.labelWidth / 2 + d.estimatedRadius + 10;
+          const safeY = group.labelHeight / 2 + d.estimatedRadius + 8;
+          const dx = d.x - group.x;
+          const dy = d.y - group.y;
+          if (Math.abs(dx) < safeX && Math.abs(dy) < safeY) {
+            const xPressure = safeX - Math.abs(dx);
+            const yPressure = safeY - Math.abs(dy);
+            if (xPressure < yPressure) d.x = group.x + Math.sign(dx || 1) * safeX;
+            else d.y = group.y + Math.sign(dy || 1) * safeY;
+          }
+          d.xPct = Math.max(.075, Math.min(.925, d.x / BASE_W));
+          d.yPct = Math.max(d.sense === 'literal' ? .04 : .515, Math.min(d.sense === 'literal' ? .475 : .965, d.y / BASE_H));
+        });
+      });
+
+      // Reserve every concept rectangle across the whole map, including where
+      // neighbouring semantic islands come close to each other.
+      for (let pass = 0; pass < 8; pass++) {
+        data.forEach(d => {
+          d.x = d.xPct * BASE_W;
+          d.y = d.yPct * BASE_H;
+          conceptStats.forEach(group => {
+            const safeX = group.labelWidth / 2 + d.estimatedRadius + 12;
+            const safeY = group.labelHeight / 2 + d.estimatedRadius + 10;
+            const dx = d.x - group.x;
+            const dy = d.y - group.y;
+            if (Math.abs(dx) >= safeX || Math.abs(dy) >= safeY) return;
+            const xPressure = safeX - Math.abs(dx);
+            const yPressure = safeY - Math.abs(dy);
+            if (xPressure < yPressure) d.x = group.x + Math.sign(dx || 1) * safeX;
+            else d.y = group.y + Math.sign(dy || 1) * safeY;
+          });
+          d.xPct = Math.max(.075, Math.min(.925, d.x / BASE_W));
+          d.yPct = Math.max(d.sense === 'literal' ? .04 : .515, Math.min(d.sense === 'literal' ? .475 : .965, d.y / BASE_H));
+        });
+      }
+
+      // A deliberately compressed third level. The three persona / social-
+      // judgement concepts remain available as local concepts, but stay out of
+      // this reviewed twelve-theme layer until their contexts are checked.
+      const themeDefinitions = [
+        { sense: 'literal', label: 'Surface texture', sources: ['Material finish', 'Surface regularity'] },
+        { sense: 'literal', label: 'Terrain + ride', sources: ['Bearing surface and terrain', 'Contact and ride quality'] },
+        { sense: 'literal', label: 'Body + contact', sources: ['Bodily surface', 'Physical contact'] },
+        { sense: 'literal', label: 'Consistency', sources: ['Material consistency'] },
+        { sense: 'metaphorical', label: 'Epistemic limits', sources: ['Controlled imprecision'] },
+        { sense: 'metaphorical', label: 'Completion + refinement', sources: ['Provisional form', 'Visible irregularity', 'Finished presentation'] },
+        { sense: 'metaphorical', label: 'Operational continuity', sources: ['Uninterrupted operation', 'Operational friction'] },
+        { sense: 'metaphorical', label: 'Passage + transition', sources: ['Unobstructed transition', 'Easy continuation', 'Difficult passage'] },
+        { sense: 'metaphorical', label: 'Ease + resistance', sources: ['Lived difficulty', 'Adverse conditions', 'Irregular difficulty', 'Effortless experience'] },
+        { sense: 'metaphorical', label: 'Fluency + coherence', sources: ['Polished expression', 'Coherent structure'] },
+        { sense: 'metaphorical', label: 'Social friction', sources: ['Efficient coordination', 'Social ease', 'Reduced conflict'] },
+        { sense: 'metaphorical', label: 'Harsh intensity', sources: ['Harsh force'] }
+      ];
+
+      const themeStats = themeDefinitions.map(definition => {
+        const concepts = definition.sources
+          .map(source => conceptByKey.get(`${definition.sense}|${source}`))
+          .filter(Boolean);
+        const members = [...new Set(concepts.flatMap(d => d.members))];
+        const totalWeight = d3.sum(concepts, d => Math.max(1, d.totalCount));
+        const targetX = d3.sum(concepts, d => d.x * Math.max(1, d.totalCount)) / Math.max(1, totalWeight);
+        const targetY = d3.sum(concepts, d => d.y * Math.max(1, d.totalCount)) / Math.max(1, totalWeight);
+        return {
+          ...definition,
+          concepts,
+          members,
+          targetX,
+          targetY,
+          labelWidth: definition.label.length * 10.2 + 34,
+          labelHeight: 32
+        };
+      });
+
+      ['literal', 'metaphorical'].forEach(sense => {
+        const themes = themeStats.filter(d => d.sense === sense);
+        const regionTop = sense === 'literal' ? 82 : BASE_H * .53;
+        const regionBottom = sense === 'literal' ? BASE_H * .47 : BASE_H - 72;
+        themes.forEach(theme => {
+          const angle = noiseAngle(`theme-${theme.label}`);
+          theme.x = theme.targetX + Math.cos(angle) * 74;
+          theme.y = theme.targetY + Math.sin(angle) * 52;
+        });
+        const simulation = d3.forceSimulation(themes)
+          .force('x', d3.forceX(d => d.targetX).strength(.24))
+          .force('y', d3.forceY(d => d.targetY).strength(.2))
+          .force('collide', d3.forceCollide(d => Math.max(72, d.labelWidth * .55) + 18).strength(1).iterations(5))
+          .stop();
+        for (let i = 0; i < 240; i++) simulation.tick();
+        themes.forEach(theme => {
+          theme.x = Math.max(260 + theme.labelWidth / 2, Math.min(BASE_W - 260 - theme.labelWidth / 2, theme.x));
+          theme.y = Math.max(regionTop + theme.labelHeight, Math.min(regionBottom - theme.labelHeight, theme.y));
+          theme.xPct = theme.x / BASE_W;
+          theme.yPct = theme.y / BASE_H;
+        });
+      });
+
+      const literalLabel = root.append('text').attr('class', 'section-label').text('LITERAL');
+      const metaphorLabel = root.append('text').attr('class', 'section-label').text('METAPHORICAL');
+      const edgeLayer = root.append('g').attr('class', 'edge-layer');
+      const nodeLayer = root.append('g').attr('class', 'node-layer');
+      const anchorLayer = root.append('g').attr('class', 'anchor-layer');
+      const conceptLayer = root.append('g').attr('class', 'concept-layer');
+      const themeLayer = root.append('g').attr('class', 'theme-layer');
+      const hoverLayer = root.append('g').attr('class', 'hover-layer').style('pointer-events', 'none');
+
+      const itemEdges = associationRecords.map(d => ({
+        node: d.node,
+        association: d.association,
+        concept: conceptByKey.get(d.key)
+      }));
+      const conceptEdges = conceptStats.flatMap(concept => concept.adjectives.map(adjective => ({
+        concept,
+        adjective,
+        anchor: adjective === 'smooth' ? smoothAnchor : roughAnchor
+      })));
+      const conceptEdge = edgeLayer.selectAll('line.concept-edge').data(conceptEdges).join('line')
+        .attr('class', 'edge concept-edge');
+      const itemEdge = edgeLayer.selectAll('line.item-edge').data(itemEdges).join('line')
+        .attr('class', 'edge item-edge');
+      const notationScale = matchMedia('(min-width: 721px)').matches ? 1.25 : 1;
+      let currentVisibleNodes = new Set();
+      const hoverCapable = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      let activeTouchTarget = null;
+      let suppressTapUntil = 0;
+
+      function focusWord(element) {
+        clearHoverState();
+        const copy = element.cloneNode(true);
+        copy.classList.add('hover-copy');
+        copy.removeAttribute('aria-label');
+        hoverLayer.node().appendChild(copy);
+        hoverLayer.raise();
+      }
+
+      function toggleTouchFocus(key, renderFocus) {
+        if (performance.now() < suppressTapUntil) return;
+        if (activeTouchTarget === key) {
+          activeTouchTarget = null;
+          clearHoverState();
+          return;
+        }
+        clearHoverState();
+        activeTouchTarget = key;
+        renderFocus();
+      }
+
+      const node = nodeLayer.selectAll('g.word').data(data).join('g')
+        .attr('class', d => `word ${d.sense}${d.total >= 500 ? ' is-major' : ''}`)
+        .attr('aria-label', d => `${d.noun}, ${d.sense}, smooth ${d.smoothCount}, rough ${d.roughCount}`)
+        .on('mouseenter', function(_, d) {
+          if (!hoverCapable) return;
+          focusWord(this, d);
+        })
+        .on('mouseleave', function() {
+          if (hoverCapable) clearHoverState();
+        })
+        .on('click', function(event, d) {
+          if (hoverCapable || performance.now() < suppressTapUntil) return;
+          event.stopPropagation();
+          toggleTouchFocus(`word:${d.noun}`, () => focusWord(this, d));
+        })
+        .sort((a, b) => d3.ascending(a.total, b.total));
+      node.append('text').attr('class', 'word-label').attr('x', 0).attr('y', 0).text(d => d.noun);
+      node.each(function(d) {
+        const g = d3.select(this);
+        const box = this.querySelector('.word-label').getBBox();
+        d.boxWidth = box.width + 20 * notationScale;
+        d.boxHeight = box.height + 4 * notationScale;
+        const left = -d.boxWidth / 2;
+        const right = d.boxWidth / 2;
+        const top = -d.boxHeight / 2;
+        const bottom = d.boxHeight / 2;
+        const shoulder = d.boxHeight * .34;
+        g.insert('rect', '.word-label')
+          .attr('class', 'notation-fill')
+          .attr('x', left).attr('y', top)
+          .attr('width', d.boxWidth).attr('height', d.boxHeight)
+          .attr('rx', d.boxHeight / 2).attr('ry', d.boxHeight / 2);
+        g.append('path')
+          .attr('class', 'notation-bracket')
+          .attr('d', `M ${left + shoulder} ${top} Q ${left} 0 ${left + shoulder} ${bottom} M ${right - shoulder} ${top} Q ${right} 0 ${right - shoulder} ${bottom}`);
+      });
+
+      const concept = conceptLayer.selectAll('g.concept').data(conceptStats, d => d.key).join('g').attr('class', 'concept');
+      concept.append('text').attr('class', 'concept-label').attr('text-anchor', 'middle').attr('dominant-baseline', 'middle').text(d => d.localConcept);
+      concept.each(function() {
+        const g = d3.select(this);
+        const box = this.querySelector('.concept-label').getBBox();
+        const datum = g.datum();
+        datum.labelWidth = box.width + 22 * notationScale;
+        datum.labelHeight = box.height + 4 * notationScale;
+        const left = box.x - 11 * notationScale;
+        const right = box.x + box.width + 11 * notationScale;
+        const top = box.y - 2 * notationScale;
+        const bottom = box.y + box.height + 2 * notationScale;
+        const arm = Math.min(6 * notationScale, datum.labelHeight * .28);
+        g.insert('rect', '.concept-label')
+          .attr('class', 'notation-fill')
+          .attr('x', left).attr('y', top)
+          .attr('width', right - left).attr('height', bottom - top);
+        g.append('path')
+          .attr('class', 'notation-bracket')
+          .attr('d', `M ${left + arm} ${top} H ${left} V ${bottom} H ${left + arm} M ${right - arm} ${top} H ${right} V ${bottom} H ${right - arm}`);
+      });
+
+      const theme = themeLayer.selectAll('g.theme').data(themeStats, d => d.label).join('g').attr('class', 'theme');
+      theme.append('text')
+        .attr('class', 'theme-label')
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .text(d => d.label);
+      theme.each(function(d) {
+        const g = d3.select(this);
+        const box = this.querySelector('.theme-label').getBBox();
+        d.labelWidth = box.width + 28 * notationScale;
+        d.labelHeight = box.height + 4 * notationScale;
+        const left = -d.labelWidth / 2;
+        const right = d.labelWidth / 2;
+        const top = -d.labelHeight / 2;
+        const bottom = d.labelHeight / 2;
+        const point = Math.min(12 * notationScale, d.labelHeight * .42);
+        g.insert('path', '.theme-label')
+          .attr('class', 'notation-fill')
+          .attr('d', `M ${left + point} ${top} H ${right - point} L ${right} 0 L ${right - point} ${bottom} H ${left + point} L ${left} 0 Z`);
+        g.append('path')
+          .attr('class', 'notation-bracket')
+          .attr('d', `M ${left + point} ${top} L ${left} 0 L ${left + point} ${bottom} M ${right - point} ${top} L ${right} 0 L ${right - point} ${bottom}`);
+      });
+      function focusConcept(element, hoveredConcept) {
+        clearHoverState();
+        const relatedNodes = new Set(hoveredConcept.members);
+        const nodesToShow = viewMode === 'concepts' ? relatedNodes : new Set([...relatedNodes].filter(d => currentVisibleNodes.has(d)));
+        concept.classed('is-hovered', d => d === hoveredConcept);
+        node.classed('is-related', d => nodesToShow.has(d));
+        const conceptCopy = element.cloneNode(true);
+        conceptCopy.classList.add('is-hovered', 'hover-copy');
+        hoverLayer.node().appendChild(conceptCopy);
+        node.each(function(d) {
+          if (!nodesToShow.has(d)) return;
+          const wordCopy = this.cloneNode(true);
+          wordCopy.classList.add('is-related', 'hover-copy');
+          wordCopy.removeAttribute('aria-label');
+          wordCopy.style.removeProperty('display');
+          hoverLayer.node().appendChild(wordCopy);
+        });
+        hoverLayer.raise();
+      }
+
+      function focusTheme(element, hoveredTheme) {
+        clearHoverState();
+        const relatedConcepts = new Set(hoveredTheme.concepts);
+        const relatedNodes = new Set(hoveredTheme.members.filter(d => currentVisibleNodes.has(d)));
+        theme.classed('is-hovered', d => d === hoveredTheme);
+        concept.classed('is-related', d => relatedConcepts.has(d));
+        node.classed('is-related', d => relatedNodes.has(d));
+
+        const themeCopy = element.cloneNode(true);
+        themeCopy.classList.add('is-hovered', 'hover-copy');
+        hoverLayer.node().appendChild(themeCopy);
+        concept.each(function(d) {
+          if (!relatedConcepts.has(d)) return;
+          const copy = this.cloneNode(true);
+          copy.classList.add('is-related', 'hover-copy');
+          copy.style.removeProperty('display');
+          hoverLayer.node().appendChild(copy);
+        });
+        node.each(function(d) {
+          if (!relatedNodes.has(d)) return;
+          const copy = this.cloneNode(true);
+          copy.classList.add('is-related', 'hover-copy');
+          copy.removeAttribute('aria-label');
+          copy.style.removeProperty('display');
+          hoverLayer.node().appendChild(copy);
+        });
+        hoverLayer.raise();
+      }
+
+      concept
+        .on('mouseenter', function(_, hoveredConcept) {
+          if (hoverCapable) focusConcept(this, hoveredConcept);
+        })
+        .on('mouseleave', function() {
+          if (hoverCapable) clearHoverState();
+        })
+        .on('click', function(event, hoveredConcept) {
+          if (hoverCapable || performance.now() < suppressTapUntil) return;
+          event.stopPropagation();
+          toggleTouchFocus(`concept:${hoveredConcept.key}`, () => focusConcept(this, hoveredConcept));
+        });
+
+      theme
+        .on('mouseenter', function(_, hoveredTheme) {
+          if (hoverCapable) focusTheme(this, hoveredTheme);
+        })
+        .on('mouseleave', function() {
+          if (hoverCapable) clearHoverState();
+        })
+        .on('click', function(event, hoveredTheme) {
+          if (hoverCapable || performance.now() < suppressTapUntil) return;
+          event.stopPropagation();
+          toggleTouchFocus(`theme:${hoveredTheme.label}`, () => focusTheme(this, hoveredTheme));
+        });
+
+      function makeAnchor(label) {
+        const group = anchorLayer.append('g').attr('class', 'anchor');
+        const text = group.append('text').attr('class', 'anchor-label').attr('x', 0).attr('y', 0).text(label);
+        const box = text.node().getBBox();
+        group.insert('rect', 'text')
+          .attr('x', box.x - 4 * notationScale).attr('y', box.y - 2 * notationScale)
+          .attr('width', box.width + 8 * notationScale).attr('height', box.height + 4 * notationScale);
+        return group;
+      }
+      const smoothGroup = makeAnchor('SMOOTH');
+      const roughGroup = makeAnchor('ROUGH');
+
+      function clearHoverState() {
+        concept.classed('is-hovered', false).classed('is-related', false);
+        theme.classed('is-hovered', false).classed('is-related', false);
+        node.classed('is-related', false);
+        smoothGroup.classed('is-hovered', false);
+        roughGroup.classed('is-hovered', false);
+        hoverLayer.selectAll('*').remove();
+      }
+
+      function focusAnchor(element, group, adjective) {
+        clearHoverState();
+        group.classed('is-hovered', true);
+        const relatedNodes = new Set([...currentVisibleNodes].filter(d => adjective === 'smooth' ? d.smoothCount > 0 : d.roughCount > 0));
+        const relatedConcepts = new Set(conceptStats.filter(d => d.active && d.adjectives.includes(adjective)));
+        const relatedThemes = new Set(themeStats.filter(d => d.active && d.concepts.some(conceptDatum => conceptDatum.adjectives.includes(adjective))));
+        concept.classed('is-related', d => relatedConcepts.has(d));
+        theme.classed('is-related', d => relatedThemes.has(d));
+        node.classed('is-related', d => relatedNodes.has(d));
+
+        const anchorCopy = element.cloneNode(true);
+        anchorCopy.classList.add('is-hovered', 'hover-copy');
+        hoverLayer.node().appendChild(anchorCopy);
+        concept.each(function(d) {
+          if (!relatedConcepts.has(d) || viewMode === 'nouns') return;
+          const copy = this.cloneNode(true);
+          copy.classList.add('is-related', 'hover-copy');
+          copy.style.removeProperty('display');
+          hoverLayer.node().appendChild(copy);
+        });
+        theme.each(function(d) {
+          if (!relatedThemes.has(d) || viewMode !== 'themes') return;
+          const copy = this.cloneNode(true);
+          copy.classList.add('is-related', 'hover-copy');
+          copy.style.removeProperty('display');
+          hoverLayer.node().appendChild(copy);
+        });
+        node.each(function(d) {
+          if (!relatedNodes.has(d)) return;
+          const copy = this.cloneNode(true);
+          copy.classList.add('is-related', 'hover-copy');
+          copy.removeAttribute('aria-label');
+          copy.style.removeProperty('display');
+          hoverLayer.node().appendChild(copy);
+        });
+        hoverLayer.raise();
+      }
+
+      function bindAnchorHover(group, adjective) {
+        group
+          .on('mouseenter', function() {
+            if (hoverCapable) focusAnchor(this, group, adjective);
+          })
+          .on('mouseleave', function() {
+            if (hoverCapable) clearHoverState();
+          })
+          .on('click', function(event) {
+            if (hoverCapable || performance.now() < suppressTapUntil) return;
+            event.stopPropagation();
+            toggleTouchFocus(`anchor:${adjective}`, () => focusAnchor(this, group, adjective));
+          });
+      }
+      bindAnchorHover(smoothGroup, 'smooth');
+      bindAnchorHover(roughGroup, 'rough');
+
+      const ranked = [...data].sort((a, b) => d3.descending(a.total, b.total));
+      const boxedCount = ranked.filter(d => d.total >= 500).length;
+      reveal = Math.pow(boxedCount / ranked.length, 1 / 1.18);
+      const xPx = d => d.xPct * canvasW;
+      const yFromPct = pct => {
+        const normalized = (pct - PLOT_Y_MIN) / (PLOT_Y_MAX - PLOT_Y_MIN);
+        return plotTop + Math.max(0, Math.min(1, normalized)) * plotHeight;
+      };
+      const yPx = d => yFromPct(d.yPct);
+
+      function updateConcepts(visibleNodes) {
+        conceptStats.forEach(group => {
+          group.visibleMembers = group.members.filter(d => visibleNodes.has(d));
+          group.active = group.visibleMembers.length > 0;
+          group.labelX = group.centerXPct * canvasW;
+          group.labelY = yFromPct(group.centerYPct);
+        });
+        concept
+          .style('display', d => viewMode !== 'nouns' && viewMode !== 'themes' && d.active ? null : 'none')
+          .attr('transform', d => `translate(${d.labelX || 0},${d.labelY || 0}) scale(${itemScale})`);
+        conceptEdge.style('display', d => viewMode !== 'nouns' && viewMode !== 'themes' && d.concept.active ? null : 'none');
+        themeStats.forEach(group => {
+          group.active = group.concepts.some(d => d.active);
+          group.labelX = group.xPct * canvasW;
+          group.labelY = yFromPct(group.yPct);
+        });
+        theme
+          .style('display', d => viewMode === 'themes' ? null : 'none')
+          .attr('transform', d => `translate(${d.labelX || 0},${d.labelY || 0}) scale(${itemScale})`);
+        conceptLayer.raise();
+        themeLayer.raise();
+        anchorLayer.raise();
+        hoverLayer.raise();
+      }
+
+      function applyReveal() {
+        activeTouchTarget = null;
+        const visibleCount = Math.round(Math.pow(reveal, 1.18) * ranked.length);
+        const revealedNodes = ranked.slice(0, visibleCount);
+        const visibleNodes = new Set(viewMode === 'shared'
+          ? revealedNodes.filter(d => sharedNouns.has(d.noun))
+          : revealedNodes);
+        currentVisibleNodes = visibleNodes;
+        concept.classed('is-hovered', false).classed('is-related', false);
+        theme.classed('is-hovered', false).classed('is-related', false);
+        node.classed('is-related', false);
+        node.style('display', d => viewMode !== 'concepts' && viewMode !== 'themes' && visibleNodes.has(d) ? null : 'none');
+        updateConcepts(visibleNodes);
+        itemEdge.style('display', d => (viewMode === 'all' || viewMode === 'shared') && visibleNodes.has(d.node) && d.concept.active ? null : 'none');
+        hoverLayer.selectAll('*').remove();
+      }
+
+      function renderLayout() {
+        const rect = document.getElementById('map').getBoundingClientRect();
+        const toolbarRect = document.querySelector('.map-toolbar').getBoundingClientRect();
+        canvasW = Math.max(320, rect.width);
+        canvasH = Math.max(540, rect.height);
+        plotTop = Math.max(48, toolbarRect.height + 4);
+        plotHeight = Math.max(340, canvasH - plotTop - 18);
+        svg.attr('viewBox', `0 0 ${canvasW} ${canvasH}`);
+        const sideLabelX = 28;
+        literalLabel.attr('x', sideLabelX).attr('y', canvasH * .165).attr('text-anchor', 'middle').attr('transform', `rotate(-90,${sideLabelX},${canvasH * .165})`);
+        metaphorLabel.attr('x', sideLabelX).attr('y', canvasH * .655).attr('text-anchor', 'middle').attr('transform', `rotate(-90,${sideLabelX},${canvasH * .655})`);
+        node.attr('transform', d => `translate(${xPx(d)},${yPx(d)}) scale(${itemScale})`);
+        itemEdge
+          .attr('x1', d => xPx(d.node)).attr('y1', d => yPx(d.node))
+          .attr('x2', d => d.concept.centerXPct * canvasW).attr('y2', d => yFromPct(d.concept.centerYPct));
+        conceptEdge
+          .attr('x1', d => d.anchor.xPct * canvasW).attr('y1', d => yFromPct(d.anchor.yPct))
+          .attr('x2', d => d.concept.centerXPct * canvasW).attr('y2', d => yFromPct(d.concept.centerYPct));
+        smoothGroup.attr('transform', `translate(${smoothAnchor.xPct * canvasW},${yFromPct(smoothAnchor.yPct)}) scale(${itemScale})`);
+        roughGroup.attr('transform', `translate(${roughAnchor.xPct * canvasW},${yFromPct(roughAnchor.yPct)}) scale(${itemScale})`);
+        applyReveal();
+      }
+
+      const mapElement = document.getElementById('map');
+      mapElement.addEventListener('wheel', event => {
+        event.preventDefault();
+        const boundedDelta = Math.max(-100, Math.min(100, event.deltaY));
+        reveal = Math.max(0, Math.min(1, reveal - boundedDelta * .0007));
+        syncContentControl();
+        applyReveal();
+      }, { passive: false });
+      const sizeControl = document.getElementById('size-control');
+      const contentControl = document.getElementById('content-control');
+      const scaleInput = document.getElementById('label-scale');
+      const contentInput = document.getElementById('content-scale');
+      const setControlFill = (control, normalized) => {
+        control.style.setProperty('--fill', `${18 + normalized * 64}%`);
+      };
+      const syncContentControl = () => {
+        contentInput.value = reveal;
+        setControlFill(contentControl, reveal);
+      };
+      let touchGesture = null;
+      mapElement.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'touch' || event.target.closest('.map-toolbar')) return;
+        touchGesture = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          startReveal: reveal,
+          moved: false
+        };
+        mapElement.setPointerCapture?.(event.pointerId);
+      });
+      mapElement.addEventListener('pointermove', event => {
+        if (!touchGesture || event.pointerId !== touchGesture.pointerId) return;
+        const deltaX = event.clientX - touchGesture.startX;
+        const deltaY = touchGesture.startY - event.clientY;
+        if (!touchGesture.moved && (Math.abs(deltaY) < 10 || Math.abs(deltaY) < Math.abs(deltaX))) return;
+        if (!touchGesture.moved) {
+          touchGesture.moved = true;
+          activeTouchTarget = null;
+          clearHoverState();
+        }
+        event.preventDefault();
+        const travel = Math.max(260, mapElement.clientHeight * .72);
+        reveal = Math.max(0, Math.min(1, touchGesture.startReveal + deltaY / travel));
+        syncContentControl();
+        applyReveal();
+      }, { passive: false });
+      const finishTouchGesture = event => {
+        if (!touchGesture || event.pointerId !== touchGesture.pointerId) return;
+        if (touchGesture.moved) suppressTapUntil = performance.now() + 450;
+        if (mapElement.hasPointerCapture?.(event.pointerId)) mapElement.releasePointerCapture(event.pointerId);
+        touchGesture = null;
+      };
+      mapElement.addEventListener('pointerup', finishTouchGesture);
+      mapElement.addEventListener('pointercancel', finishTouchGesture);
+      mapElement.addEventListener('click', event => {
+        if (hoverCapable || performance.now() < suppressTapUntil || event.target.closest('.map-toolbar')) return;
+        activeTouchTarget = null;
+        clearHoverState();
+      });
+      scaleInput.addEventListener('input', () => {
+        itemScale = Number(scaleInput.value);
+        const normalized = (itemScale - .7) / .75;
+        setControlFill(sizeControl, normalized);
+        renderLayout();
+      });
+      contentInput.addEventListener('input', () => {
+        reveal = Number(contentInput.value);
+        setControlFill(contentControl, reveal);
+        applyReveal();
+      });
+      document.querySelectorAll('.view-button').forEach(button => {
+        button.addEventListener('click', () => {
+          const requestedMode = button.dataset.view;
+          viewMode = viewMode === requestedMode ? 'all' : requestedMode;
+          document.querySelectorAll('.view-button').forEach(candidate => {
+            candidate.setAttribute('aria-pressed', String(candidate.dataset.view === viewMode));
+          });
+          clearHoverState();
+          applyReveal();
+        });
+      });
+
+      const pageTabs = [...document.querySelectorAll('.page-tab')];
+      const pagePanels = [...document.querySelectorAll('[data-page-panel]')];
+      const cover = document.getElementById('cover');
+      const pageTitles = new Map([
+        ['raw', 'Data'],
+        ['mapping', 'Mapping'],
+        ['story', 'Interpretation'],
+        ['references', 'References']
+      ]);
+      const positionPageTabs = currentIndex => {
+        pageTabs.forEach((candidate, candidateIndex) => {
+          candidate.classList.toggle('on-left', candidateIndex <= currentIndex);
+          candidate.classList.toggle('on-right', candidateIndex > currentIndex);
+        });
+      };
+      const activatePage = nextPage => {
+        if (!pageTitles.has(nextPage)) nextPage = '';
+        const tabIndex = pageTabs.findIndex(tab => tab.dataset.page === nextPage);
+        cover.classList.toggle('is-active', !nextPage);
+        cover.setAttribute('aria-hidden', String(Boolean(nextPage)));
+        pageTabs.forEach(candidate => {
+          if (candidate.dataset.page === nextPage) candidate.setAttribute('aria-current', 'page');
+          else candidate.removeAttribute('aria-current');
+        });
+        pagePanels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.pagePanel === nextPage));
+        positionPageTabs(tabIndex);
+        document.title = nextPage ? `Smooth / Rough — ${pageTitles.get(nextPage)}` : 'Smooth / Rough';
+        if (nextPage === 'mapping') requestAnimationFrame(renderLayout);
+        if (nextPage === 'story') requestAnimationFrame(renderStory);
+      };
+      pageTabs.forEach(tab => tab.addEventListener('click', () => activatePage(tab.dataset.page)));
+      document.querySelectorAll('[data-cover-page]').forEach(button => {
+        button.addEventListener('click', () => activatePage(button.dataset.coverPage));
+      });
+      setControlFill(sizeControl, (itemScale - .7) / .75);
+      syncContentControl();
+      new ResizeObserver(renderLayout).observe(document.getElementById('map'));
+      new ResizeObserver(() => {
+        if (document.querySelector('[data-page-panel="story"]').classList.contains('is-active')) renderStory();
+      }).observe(storyPlot);
+      if (location.hash) history.replaceState(null, '', `${location.pathname}${location.search}`);
+      activatePage('');
+    })();
+  </script>
+</body>
+</html>
