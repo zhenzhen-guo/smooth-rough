@@ -76,14 +76,6 @@
     #site[data-current-page="mapping"] { --paper-left: 4.49%; --paper-right: 2.69%; }
     #site[data-current-page="story"] { --paper-left: 6.392%; --paper-right: .788%; }
     #site[data-current-page="references"] { --paper-left: 7.02%; --paper-right: 0%; }
-    #site::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: 10;
-      background: rgba(255, 255, 255, .95);
-      pointer-events: none;
-    }
     .cover {
       position: absolute;
       inset: 0 7.02% 0 0;
@@ -98,8 +90,8 @@
     .cover.is-active,
     .page.is-active {
       z-index: 20;
-      background: transparent;
-      opacity: 1;
+      background: #fff;
+      opacity: .95;
     }
     .cover.is-ghost,
     .page.is-ghost {
@@ -235,7 +227,7 @@
     .page.is-ghost { visibility: visible; }
     .page-scroll { width: 100%; height: 100%; overflow: auto; padding: 14px 20px 48px; }
     .page-heading { margin: 0 0 28px; font-size: var(--text-size); font-weight: 400; }
-    .page-index { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+    .page-index { position: absolute; inset: 0; z-index: 40; opacity: .95; pointer-events: none; }
     .page-index::before,
     .page-index::after {
       content: "";
