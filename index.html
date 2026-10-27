@@ -45,8 +45,8 @@
       object-fit: fill;
       object-position: center top;
       mix-blend-mode: lighten;
-      opacity: .78;
-      filter: grayscale(1) contrast(1.28) brightness(.9);
+      opacity: 1;
+      filter: grayscale(1) contrast(1.16) brightness(1.18);
       pointer-events: none;
       user-select: none;
       -webkit-user-drag: none;
@@ -63,18 +63,51 @@
       }
     }
     button, input { font: inherit; }
-    #site { position: relative; width: 100%; height: 100vh; min-height: 620px; background: #fff; }
+    #site {
+      --paper-left: 0%;
+      --paper-right: 7.02%;
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      min-height: 620px;
+      background: #fff;
+    }
+    #site[data-current-page="raw"] { --paper-left: 1.388%; --paper-right: 5.792%; }
+    #site[data-current-page="mapping"] { --paper-left: 4.49%; --paper-right: 2.69%; }
+    #site[data-current-page="story"] { --paper-left: 6.392%; --paper-right: .788%; }
+    #site[data-current-page="references"] { --paper-left: 7.02%; --paper-right: 0%; }
+    #site::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      background: rgba(255, 255, 255, .95);
+      pointer-events: none;
+    }
     .cover {
       position: absolute;
       inset: 0 7.02% 0 0;
-      z-index: 20;
       display: none;
       overflow: auto;
       padding: 14px 12px 14px 26px;
       background: #fff;
       container-type: inline-size;
     }
-    .cover.is-active { display: block; }
+    .cover.is-active,
+    .cover.is-ghost { display: block; }
+    .cover.is-active,
+    .page.is-active {
+      z-index: 20;
+      background: transparent;
+      opacity: 1;
+    }
+    .cover.is-ghost,
+    .page.is-ghost {
+      z-index: 1;
+      opacity: 1;
+      pointer-events: none;
+      user-select: none;
+    }
     .cover-inner {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -90,6 +123,7 @@
       letter-spacing: 0;
     }
     .cover-index-list {
+      --cover-start: 8%;
       --cover-step: 3ch;
       grid-column: 1 / span 4;
       display: grid;
@@ -99,7 +133,7 @@
       gap: 0;
       justify-items: start;
       margin: 0;
-      padding: 0 0 0 8%;
+      padding: 0 0 0 var(--cover-start);
       list-style: none;
     }
     .cover-index-list li:nth-child(1) { margin-left: 0; }
@@ -195,10 +229,22 @@
     .page[data-page-panel="story"] { left: 6.392%; right: .788%; }
     .page[data-page-panel="references"] { --reference-gap: 12px; left: 7.02%; right: 0; }
     .page.is-active { visibility: visible; pointer-events: auto; }
+    .page.is-ghost { visibility: visible; }
     .page-scroll { width: 100%; height: 100%; overflow: auto; padding: 14px 20px 48px; }
     .page-heading { margin: 0 0 28px; font-size: var(--text-size); font-weight: 400; }
     .page-index { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
-    .page-tab { position: absolute; padding: 0; border: 0; border-radius: 0; background: #000; cursor: pointer; pointer-events: auto; transition: left 140ms linear, right 140ms linear; }
+    .page-index::before,
+    .page-index::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      z-index: 0;
+      background: #fff;
+    }
+    .page-index::before { left: 0; width: var(--paper-left); }
+    .page-index::after { right: 0; width: var(--paper-right); }
+    .page-tab { position: absolute; z-index: 1; padding: 0; border: 0; border-radius: 0; background: #000; cursor: pointer; pointer-events: auto; transition: left 140ms linear, right 140ms linear; }
     .page-tab.on-left { right: auto; }
     .page-tab.on-right { left: auto; }
     .page-tab:nth-child(1).on-left { left: 0; }
@@ -213,7 +259,7 @@
     .page-tab:nth-child(2) { top: 18.5%; bottom: 38%; width: 3.262%; }
     .page-tab:nth-child(3) { top: 62%; bottom: 10.5%; width: 2.062%; }
     .page-tab:nth-child(4) { top: 89.5%; bottom: 0; width: .788%; }
-    #map { position: relative; width: 100%; height: 100%; background: #fff; touch-action: none; }
+    #map { position: relative; width: 100%; height: 100%; background: transparent; touch-action: none; }
     #map-svg { position: relative; z-index: 1; width: 100%; height: 100%; display: block; background: transparent; }
     .edge { stroke: #000; stroke-width: var(--line-weight); stroke-linecap: round; vector-effect: non-scaling-stroke; }
     .item-edge { stroke-dasharray: 4 4; }
@@ -265,7 +311,7 @@
       padding: 4px 9px;
       border: var(--line-weight) solid #000;
       border-radius: 999px;
-      background: #fff;
+      background: transparent;
       color: #000;
       font-weight: 400;
       cursor: pointer;
@@ -337,7 +383,7 @@
       display: grid;
       grid-template-columns: var(--raw-columns);
       align-items: start;
-      background: #fff;
+      background: transparent;
       font-weight: 400;
       line-height: 1.45;
     }
@@ -353,7 +399,7 @@
       margin-top: 1.45em;
       padding-right: 8px;
     }
-    .raw-stat-card { border: var(--line-weight) solid #000; padding: 7px; background: #fff; }
+    .raw-stat-card { border: var(--line-weight) solid #000; padding: 7px; background: transparent; }
     .raw-stat-card + .raw-stat-card { border-top: 0; }
     .raw-pie {
       display: block;
@@ -378,7 +424,7 @@
       padding: 0 3px;
       border: var(--line-weight) solid #000;
       border-radius: 999px;
-      background: #fff;
+      background: transparent;
       color: #000;
       cursor: pointer;
       line-height: 1.05;
@@ -399,7 +445,7 @@
       border: var(--line-weight) solid #000;
       outline: none;
     }
-    .raw-grid.has-inspection .raw-bar { min-width: 2px; background: #fff; }
+    .raw-grid.has-inspection .raw-bar { min-width: 2px; background: transparent; }
     .raw-grid.has-inspection .raw-group.is-inspecting[data-active-sense="literal"] .raw-bar.literal,
     .raw-grid.has-inspection .raw-group.is-inspecting[data-active-sense="metaphorical"] .raw-bar.metaphorical { background: #000; }
     .raw-bar::after {
@@ -420,7 +466,7 @@
     .raw-bar:hover::after, .raw-bar:focus::after { display: block; }
     .story-scroll { width: 100%; height: 100%; overflow: auto; padding: 14px 12px 14px 0; }
     .story-layout { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; height: calc(100dvh - 28px); min-height: 0; }
-    .story-plot { position: relative; grid-column: 1 / span 4; width: 100%; height: 100%; min-width: 0; min-height: 0; background: #fff; }
+    .story-plot { position: relative; grid-column: 1 / span 4; width: 100%; height: 100%; min-width: 0; min-height: 0; background: transparent; }
     .story-side { grid-column: 5 / span 2; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 26px; width: 100%; height: 100%; min-width: 0; min-height: 0; }
     .story-legend { display: grid; gap: 10px; align-content: start; }
     .story-legend-item { display: flex; align-items: center; gap: 8px; min-width: 0; font: 400 var(--text-size)/1 "Inter", Arial, sans-serif; white-space: nowrap; }
@@ -432,7 +478,7 @@
       padding: 14px;
       overflow: auto;
       border: var(--line-weight) solid #000;
-      background: #fff;
+      background: transparent;
       font: 400 var(--text-size)/1.35 "Inter", Arial, sans-serif;
     }
     .story-summary-title { display: grid; gap: 2px; margin: 0 0 1.5em; font: inherit; }
@@ -462,7 +508,7 @@
       width: min(280px, calc(100% - 24px));
       padding: 7px 9px;
       border: var(--line-weight) solid #000;
-      background: #fff;
+      background: rgba(255, 255, 255, .92);
       color: #000;
       font: 400 var(--text-size)/1.3 "Inter", Arial, sans-serif;
       pointer-events: none;
@@ -476,7 +522,7 @@
       right: 5px;
       padding: 0 2px;
       border: 0;
-      background: #fff;
+      background: transparent;
       color: #000;
       font: 400 var(--text-size)/1 "Inter", Arial, sans-serif;
       cursor: pointer;
@@ -508,7 +554,7 @@
       align-self: start;
       justify-self: start;
       margin: 0;
-      background: #fff;
+      background: transparent;
       font-size: var(--text-size);
       font-weight: 400;
       line-height: 1;
@@ -545,6 +591,17 @@
         --content-gutter: 26px;
       }
       #site { min-height: 540px; }
+      .page-tab { touch-action: manipulation; }
+      .page-tab::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: max(28px, 100%);
+        background: transparent;
+      }
+      .page-tab.on-left::before { left: 0; }
+      .page-tab.on-right::before { right: 0; }
       .cover { padding: 12px 8px 18px 12px; }
       .cover-inner {
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -619,9 +676,9 @@
           <li><button class="cover-page-link" type="button" data-cover-page="references">→ REFERENCES</button></li>
         </ol>
         <div class="cover-symbols" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#fff" stroke="#000" stroke-width="1.75" vector-effect="non-scaling-stroke" /></svg>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#000" stroke-width="1.75" vector-effect="non-scaling-stroke" /></svg>
           <svg viewBox="0 0 24 24"><path d="M12 1.65L17.95 11.27A7 7 0 1 1 6.05 11.27Z" fill="#000" /></svg>
-          <svg viewBox="0 0 24 24"><path d="M12 3L21 20H3Z" fill="#fff" stroke="#000" stroke-width="1.75" vector-effect="non-scaling-stroke" /></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 3L21 20H3Z" fill="none" stroke="#000" stroke-width="1.75" vector-effect="non-scaling-stroke" /></svg>
         </div>
         <p class="cover-turn">Click the black side tabs <span class="cover-tab-sample" aria-hidden="true"></span> to turn pages.</p>
         <div class="cover-notes">
@@ -686,7 +743,7 @@
           <aside class="story-side">
             <div class="story-legend" aria-label="Legend">
               <div class="story-legend-item">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="#fff" stroke="#000" stroke-width="1.75" /></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="none" stroke="#000" stroke-width="1.75" /></svg>
                 <span>Smooth (n.)</span>
               </div>
               <div class="story-legend-item">
@@ -694,7 +751,7 @@
                 <span>Shared (n.)</span>
               </div>
               <div class="story-legend-item">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L21 20H3Z" fill="#fff" stroke="#000" stroke-width="1.75" /></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L21 20H3Z" fill="none" stroke="#000" stroke-width="1.75" /></svg>
                 <span>Rough (n.)</span>
               </div>
             </div>
@@ -2023,16 +2080,22 @@
       const coverNotes = cover.querySelector('.cover-notes');
       const fitCoverNavigation = () => {
         coverIndex.classList.remove('is-too-narrow');
+        coverIndex.style.removeProperty('--cover-start');
         coverIndex.style.setProperty('--cover-step', '0px');
-        const indexStyle = getComputedStyle(coverIndex);
-        const availableWidth = Math.max(0, coverIndex.clientWidth
-          - Number.parseFloat(indexStyle.paddingLeft || 0)
+        let indexStyle = getComputedStyle(coverIndex);
+        const preferredStart = Number.parseFloat(indexStyle.paddingLeft || 0);
+        const baseAvailableWidth = Math.max(0, coverIndex.clientWidth
           - Number.parseFloat(indexStyle.paddingRight || 0)
           - 16);
         const buttons = coverIndexItems.map(item => item.querySelector('.cover-page-link'));
         const widths = buttons.map(button => Math.ceil(button.getBoundingClientRect().width));
         const fontSize = Number.parseFloat(getComputedStyle(buttons[0]).fontSize) || 32;
         const desiredStep = fontSize * .556 * (matchMedia('(max-width: 720px)').matches ? 2 : 3);
+        const desiredRightEdge = Math.max(...widths.map((width, index) => width + desiredStep * index));
+        const fittedStart = Math.max(0, Math.min(preferredStart, baseAvailableWidth - desiredRightEdge));
+        coverIndex.style.setProperty('--cover-start', `${Math.floor(fittedStart)}px`);
+        indexStyle = getComputedStyle(coverIndex);
+        const availableWidth = Math.max(0, baseAvailableWidth - Number.parseFloat(indexStyle.paddingLeft || 0));
         let fittedStep = desiredStep;
         widths.forEach((width, index) => {
           if (index) fittedStep = Math.min(fittedStep, (availableWidth - width) / index);
@@ -2195,6 +2258,7 @@
         ['story', 'Interpretation'],
         ['references', 'References']
       ]);
+      const pageSequence = ['', ...pageTitles.keys()];
       const positionPageTabs = currentIndex => {
         pageTabs.forEach((candidate, candidateIndex) => {
           candidate.classList.toggle('on-left', candidateIndex <= currentIndex);
@@ -2203,18 +2267,31 @@
       };
       const activatePage = nextPage => {
         if (!pageTitles.has(nextPage)) nextPage = '';
+        const sequenceIndex = pageSequence.indexOf(nextPage);
+        const ghostPage = pageSequence[(sequenceIndex + 1) % pageSequence.length];
         const tabIndex = pageTabs.findIndex(tab => tab.dataset.page === nextPage);
-        cover.classList.toggle('is-active', !nextPage);
-        cover.setAttribute('aria-hidden', String(Boolean(nextPage)));
+        const coverIsActive = nextPage === '';
+        cover.classList.toggle('is-active', coverIsActive);
+        cover.classList.toggle('is-ghost', ghostPage === '');
+        cover.toggleAttribute('inert', !coverIsActive);
+        cover.setAttribute('aria-hidden', String(!coverIsActive));
         pageTabs.forEach(candidate => {
           if (candidate.dataset.page === nextPage) candidate.setAttribute('aria-current', 'page');
           else candidate.removeAttribute('aria-current');
         });
-        pagePanels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.pagePanel === nextPage));
+        pagePanels.forEach(panel => {
+          const panelName = panel.dataset.pagePanel;
+          const panelIsActive = panelName === nextPage;
+          panel.classList.toggle('is-active', panelIsActive);
+          panel.classList.toggle('is-ghost', panelName === ghostPage);
+          panel.toggleAttribute('inert', !panelIsActive);
+          panel.setAttribute('aria-hidden', String(!panelIsActive));
+        });
+        document.getElementById('site').dataset.currentPage = nextPage || 'cover';
         positionPageTabs(tabIndex);
         document.title = nextPage ? `Smooth / Rough — ${pageTitles.get(nextPage)}` : 'Smooth / Rough';
-        if (nextPage === 'mapping') requestAnimationFrame(renderLayout);
-        if (nextPage === 'story') requestAnimationFrame(renderStory);
+        if (nextPage === 'mapping' || ghostPage === 'mapping') requestAnimationFrame(renderLayout);
+        if (nextPage === 'story' || ghostPage === 'story') requestAnimationFrame(renderStory);
       };
       pageTabs.forEach(tab => tab.addEventListener('click', () => activatePage(tab.dataset.page)));
       document.querySelectorAll('[data-cover-page]').forEach(button => {
