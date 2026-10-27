@@ -161,8 +161,11 @@
       gap: 0;
       container-type: inline-size;
     }
-    .cover-symbols svg { width: clamp(88px, 10vw, 168px); height: clamp(88px, 10vw, 168px); overflow: visible; }
-    .cover-symbols svg + svg { margin-left: clamp(-36px, -1.8vw, -14px); }
+    .cover-symbols svg { flex: 0 0 auto; height: auto; overflow: visible; }
+    .cover-symbols svg:nth-child(1) { width: clamp(112px, 38cqi, 230px); }
+    .cover-symbols svg:nth-child(2) { width: clamp(120px, 40.5cqi, 245px); }
+    .cover-symbols svg:nth-child(3) { width: clamp(112px, 38cqi, 230px); }
+    .cover-symbols svg + svg { margin-left: clamp(-64px, -10cqi, -34px); }
     .cover-symbols [stroke] { stroke-width: 2.25; }
     .cover-turn {
       grid-column: 1 / -1;
