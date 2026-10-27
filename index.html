@@ -7,7 +7,22 @@
   <meta name="description" content="A flat semantic map of nouns associated with smooth and rough." />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.65L17.95 11.27A7 7 0 1 1 6.05 11.27Z' fill='black'/%3E%3C/svg%3E" />
   <style>
-    * { box-sizing: border-box; }
+    @font-face {
+      font-family: "Inter";
+      src: url("./Inter-Variable.ttf") format("truetype");
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Inter";
+      src: url("./Inter-Italic-Variable.ttf") format("truetype");
+      font-style: italic;
+      font-weight: 100 900;
+      font-display: swap;
+    }
+    * { box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; }
+    *::-webkit-scrollbar { display: none; width: 0; height: 0; }
     :root {
       --text-size: 20px;
       --small-text-size: 15px;
@@ -16,8 +31,37 @@
       --line-weight: 1.5px;
       --mark-line: 1.75px;
     }
-    html, body { margin: 0; min-height: 100%; background: #fff; color: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; }
+    html, body { margin: 0; min-height: 100%; background: #fff; color: #000; font-family: "Inter", Arial, sans-serif; font-size: var(--text-size); font-weight: 400; }
     body { overflow: hidden; }
+    .surface-texture-overlay {
+      position: fixed;
+      z-index: 9999;
+      inset: 0;
+      display: block;
+      width: 100vw;
+      height: 100dvh;
+      max-width: none;
+      max-height: none;
+      object-fit: fill;
+      object-position: center top;
+      mix-blend-mode: lighten;
+      opacity: .78;
+      filter: grayscale(1) contrast(1.28) brightness(.9);
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+      transform-origin: center;
+    }
+    @media (orientation: portrait) {
+      .surface-texture-overlay {
+        inset: auto;
+        top: 50%;
+        left: 50%;
+        width: 100dvh;
+        height: 100vw;
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+    }
     button, input { font: inherit; }
     #site { position: relative; width: 100%; height: 100vh; min-height: 620px; background: #fff; }
     .cover {
@@ -28,6 +72,7 @@
       overflow: auto;
       padding: 14px 12px 14px 26px;
       background: #fff;
+      container-type: inline-size;
     }
     .cover.is-active { display: block; }
     .cover-inner {
@@ -41,12 +86,16 @@
     .cover-heading { grid-column: 1 / -1; }
     .cover-title, .cover-deck {
       margin: 0;
-      font: 400 var(--cover-type-size)/1.06 Arial, sans-serif;
+      font: 400 var(--cover-type-size)/1.06 "Inter", Arial, sans-serif;
       letter-spacing: 0;
     }
     .cover-index-list {
+      --cover-step: 3ch;
       grid-column: 1 / span 4;
       display: grid;
+      align-self: start;
+      align-content: start;
+      grid-auto-rows: max-content;
       gap: 0;
       justify-items: start;
       margin: 0;
@@ -54,17 +103,20 @@
       list-style: none;
     }
     .cover-index-list li:nth-child(1) { margin-left: 0; }
-    .cover-index-list li:nth-child(2) { margin-left: 2ch; }
-    .cover-index-list li:nth-child(3) { margin-left: 4ch; }
-    .cover-index-list li:nth-child(4) { margin-left: 6ch; }
+    .cover-index-list li:nth-child(2) { margin-left: var(--cover-step); }
+    .cover-index-list li:nth-child(3) { margin-left: calc(var(--cover-step) * 2); }
+    .cover-index-list li:nth-child(4) { margin-left: calc(var(--cover-step) * 3); }
     .cover-page-link {
       padding: 0;
       border: 0;
       background: transparent;
       color: #000;
-      font: 400 var(--cover-type-size)/1.06 Arial, sans-serif;
+      font: 400 var(--cover-type-size)/1.06 "Inter", Arial, sans-serif;
       cursor: pointer;
+      white-space: nowrap;
+      text-align: left;
     }
+    .cover-index-list.is-too-narrow .cover-page-link { white-space: normal; }
     .cover-page-link:hover, .cover-page-link:focus-visible { text-decoration: underline; text-underline-offset: .12em; }
     .cover-symbols {
       grid-column: 5 / -1;
@@ -73,6 +125,7 @@
       align-items: center;
       justify-content: center;
       gap: 0;
+      container-type: inline-size;
     }
     .cover-symbols svg { width: clamp(88px, 10vw, 168px); height: clamp(88px, 10vw, 168px); overflow: visible; }
     .cover-symbols svg + svg { margin-left: clamp(-36px, -1.8vw, -14px); }
@@ -81,26 +134,52 @@
       grid-column: 1 / -1;
       display: block;
       margin: 0;
-      font: 400 var(--cover-type-size)/1.06 Arial, sans-serif;
+      font: 400 var(--cover-type-size)/1.06 "Inter", Arial, sans-serif;
     }
     .cover-tab-sample { display: inline-block; width: 4.2em; height: .82em; margin: 0 .18em; vertical-align: -.06em; background: #000; }
     .cover-notes {
       grid-column: 1 / -1;
       grid-row: 5;
-      display: grid;
-      grid-template-columns: minmax(0, 6fr) minmax(0, 2.8fr) minmax(0, 3.2fr);
+      display: flex;
       gap: 12px;
-      align-items: end;
+      align-items: stretch;
       align-self: end;
     }
-    .cover-note:nth-child(1) { grid-column: 1; }
-    .cover-note:nth-child(2) { grid-column: 2; }
-    .cover-note:nth-child(3) { grid-column: 3; }
+    .cover-note:nth-child(1) { flex: 6 1 0; }
+    .cover-note:nth-child(2) { flex: 2.8 1 0; }
+    .cover-note:nth-child(3) { flex: 3.2 1 0; }
     .cover-note {
+      position: relative;
       min-width: 0;
-      padding: 9px 11px;
+      padding: 9px 36px 9px 11px;
       border: 2.25px solid #000;
-      font: 400 var(--text-size)/1.28 Arial, sans-serif;
+      font: 400 var(--text-size)/1.28 "Inter", Arial, sans-serif;
+    }
+    .cover-note-close {
+      position: absolute;
+      top: 4px;
+      right: 7px;
+      width: 1.15em;
+      height: 1.15em;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: 400 1.15em/1 "Inter", Arial, sans-serif;
+      cursor: pointer;
+    }
+    .cover-note-close:focus-visible { outline: 1.5px solid currentColor; outline-offset: 1px; }
+    @media (orientation: portrait) {
+      .cover-symbols {
+        gap: 0;
+        min-height: 0;
+        margin-block: 0;
+      }
+      .cover-symbols svg { flex: 0 0 auto; height: auto; }
+      .cover-symbols svg:nth-child(1) { width: clamp(90px, 35cqi, 230px); }
+      .cover-symbols svg:nth-child(2) { width: clamp(96px, 38cqi, 245px); }
+      .cover-symbols svg:nth-child(3) { width: clamp(90px, 35cqi, 230px); }
+      .cover-symbols svg + svg { margin-left: clamp(-52px, -10cqi, -24px); }
     }
     .page {
       position: absolute;
@@ -114,7 +193,7 @@
     .page[data-page-panel="raw"] { left: 1.388%; right: 5.792%; }
     .page[data-page-panel="mapping"] { left: 4.49%; right: 2.69%; }
     .page[data-page-panel="story"] { left: 6.392%; right: .788%; }
-    .page[data-page-panel="references"] { left: 7.02%; right: 0; }
+    .page[data-page-panel="references"] { --reference-gap: 12px; left: 7.02%; right: 0; }
     .page.is-active { visibility: visible; pointer-events: auto; }
     .page-scroll { width: 100%; height: 100%; overflow: auto; padding: 14px 20px 48px; }
     .page-heading { margin: 0 0 28px; font-size: var(--text-size); font-weight: 400; }
@@ -140,7 +219,7 @@
     .item-edge { stroke-dasharray: 4 4; }
     .word rect { fill: #fff; stroke: none; vector-effect: non-scaling-stroke; }
     .word:not(.is-major) rect { display: block; fill: #fff; stroke: none; }
-    .word text { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; text-anchor: middle; dominant-baseline: middle; }
+    .word text { fill: #000; font-family: "Inter", Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; text-anchor: middle; dominant-baseline: middle; }
     @media (hover: hover) and (pointer: fine) {
       .word:hover rect { display: block; fill: #000; stroke: #000; stroke-width: var(--line-weight); }
       .word:hover text { fill: #fff; }
@@ -151,13 +230,13 @@
     .notation-fill { fill: #fff; stroke: none; }
     .notation-bracket { fill: none; stroke: #000; stroke-width: var(--mark-line); stroke-linecap: square; stroke-linejoin: miter; vector-effect: non-scaling-stroke; pointer-events: none; }
     .concept rect { fill: #fff; stroke: none; vector-effect: non-scaling-stroke; }
-    .concept text { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; }
+    .concept text { fill: #000; font-family: "Inter", Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; }
     .concept.is-hovered rect { fill: #000; }
     .concept.is-hovered text { fill: #fff; }
     .concept.is-related rect { fill: #000; }
     .concept.is-related text { fill: #fff; }
     .theme { cursor: default; }
-    .theme text { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; }
+    .theme text { fill: #000; font-family: "Inter", Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; }
     .theme.is-hovered .notation-fill, .theme.is-related .notation-fill { fill: #000; }
     .theme.is-hovered text, .theme.is-related text { fill: #fff; }
     .word.is-related rect { display: block; fill: #000; stroke: #000; }
@@ -166,8 +245,8 @@
     .anchor rect { fill: #fff; stroke: none; }
     .anchor.is-hovered rect { fill: #000; }
     .anchor.is-hovered text { fill: #fff; }
-    .anchor-label { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; text-anchor: middle; dominant-baseline: middle; letter-spacing: 0; }
-    .section-label { fill: #000; font-family: Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; }
+    .anchor-label { fill: #000; font-family: "Inter", Arial, sans-serif; font-size: var(--text-size); font-weight: 400; text-anchor: middle; dominant-baseline: middle; letter-spacing: 0; }
+    .section-label { fill: #000; font-family: "Inter", Arial, sans-serif; font-size: var(--text-size); font-weight: 400; letter-spacing: 0; }
     .map-toolbar {
       position: absolute;
       z-index: 10;
@@ -203,7 +282,7 @@
       grid-template-columns: 80px 105px;
       align-items: center;
       gap: 9px;
-      font: 400 var(--text-size)/1 Arial, sans-serif;
+      font: 400 var(--text-size)/1 "Inter", Arial, sans-serif;
     }
     .control-label { text-align: left; }
     .range-control {
@@ -232,7 +311,7 @@
       z-index: 2;
       top: 50%;
       transform: translateY(-52%);
-      font: 400 var(--text-size)/1 Arial, sans-serif;
+      font: 400 var(--text-size)/1 "Inter", Arial, sans-serif;
       pointer-events: none;
       user-select: none;
     }
@@ -335,7 +414,7 @@
       border: var(--line-weight) solid #000;
       background: #fff;
       color: #000;
-      font: 400 var(--small-text-size)/1.2 Arial, sans-serif;
+      font: 400 var(--small-text-size)/1.2 "Inter", Arial, sans-serif;
       white-space: nowrap;
     }
     .raw-bar:hover::after, .raw-bar:focus::after { display: block; }
@@ -344,7 +423,7 @@
     .story-plot { position: relative; grid-column: 1 / span 4; width: 100%; height: 100%; min-width: 0; min-height: 0; background: #fff; }
     .story-side { grid-column: 5 / span 2; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 26px; width: 100%; height: 100%; min-width: 0; min-height: 0; }
     .story-legend { display: grid; gap: 10px; align-content: start; }
-    .story-legend-item { display: flex; align-items: center; gap: 8px; min-width: 0; font: 400 var(--text-size)/1 Arial, sans-serif; white-space: nowrap; }
+    .story-legend-item { display: flex; align-items: center; gap: 8px; min-width: 0; font: 400 var(--text-size)/1 "Inter", Arial, sans-serif; white-space: nowrap; }
     .story-legend-item svg { flex: 0 0 24px; width: 24px; height: 24px; overflow: visible; }
     .story-summary {
       display: flex;
@@ -354,7 +433,7 @@
       overflow: auto;
       border: var(--line-weight) solid #000;
       background: #fff;
-      font: 400 var(--text-size)/1.35 Arial, sans-serif;
+      font: 400 var(--text-size)/1.35 "Inter", Arial, sans-serif;
     }
     .story-summary-title { display: grid; gap: 2px; margin: 0 0 1.5em; font: inherit; }
     .story-summary p { margin: 0; }
@@ -364,8 +443,8 @@
     #story-svg { width: 100%; height: 100%; display: block; }
     .story-rule { stroke: #000; stroke-width: var(--line-weight); vector-effect: non-scaling-stroke; }
     .story-band-rule { stroke: #000; stroke-width: var(--line-weight); stroke-dasharray: 5 5; vector-effect: non-scaling-stroke; }
-    .story-label { fill: #000; font: 400 var(--text-size)/1 Arial, sans-serif; }
-    .story-note { fill: #000; font: 400 var(--text-size)/1 Arial, sans-serif; }
+    .story-label { fill: #000; font: 400 var(--text-size)/1 "Inter", Arial, sans-serif; }
+    .story-note { fill: #000; font: 400 var(--text-size)/1 "Inter", Arial, sans-serif; }
     .story-band-label { fill: #000; stroke: #fff; stroke-width: 5px; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
     .story-mark { stroke: #000; stroke-width: var(--mark-line); vector-effect: non-scaling-stroke; transform-box: fill-box; transform-origin: center; transition: transform 100ms linear; }
     .story-node { cursor: pointer; outline: none; }
@@ -385,7 +464,7 @@
       border: var(--line-weight) solid #000;
       background: #fff;
       color: #000;
-      font: 400 var(--text-size)/1.3 Arial, sans-serif;
+      font: 400 var(--text-size)/1.3 "Inter", Arial, sans-serif;
       pointer-events: none;
     }
     .story-tooltip.is-visible { display: block; }
@@ -399,7 +478,7 @@
       border: 0;
       background: #fff;
       color: #000;
-      font: 400 var(--text-size)/1 Arial, sans-serif;
+      font: 400 var(--text-size)/1 "Inter", Arial, sans-serif;
       cursor: pointer;
       pointer-events: auto;
     }
@@ -408,7 +487,18 @@
     .story-pinned-card { display: block; }
     .story-pinned-card .story-tooltip-title { cursor: move; pointer-events: auto; touch-action: none; user-select: none; }
     #story-tooltip { z-index: 7; }
-    .reference-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 12px; row-gap: 18px; align-items: start; }
+    .reference-scroll {
+      display: flex;
+      flex-direction: column;
+    }
+    .reference-grid {
+      display: grid;
+      flex: 0 0 auto;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      column-gap: var(--reference-gap);
+      row-gap: 18px;
+      align-items: start;
+    }
     .reference-title {
       grid-column: 1;
       grid-row: 1 / span 6;
@@ -426,10 +516,28 @@
       writing-mode: vertical-rl;
       transform: rotate(180deg);
     }
-    .reference-number { grid-column: 3; padding-right: 8px; text-align: right; line-height: 1.35; }
+    .reference-number { grid-column: 3; padding: 0; text-align: left; line-height: 1.35; }
     .reference-entry { grid-column: 4 / span 3; line-height: 1.35; overflow-wrap: anywhere; }
     .reference-entry a { color: inherit; text-decoration: underline; }
     .reference-note { grid-column: 3 / -1; line-height: 1.35; overflow-wrap: anywhere; }
+    .reference-back {
+      position: absolute;
+      z-index: 4;
+      left: 20px;
+      bottom: 5px;
+      width: calc((100% - (var(--reference-gap) * 5)) / 3 + var(--reference-gap));
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: 400 var(--cover-type-size)/1.06 "Inter", Arial, sans-serif;
+      text-align: left;
+      cursor: pointer;
+    }
+    .reference-back:hover,
+    .reference-back:focus-visible { text-decoration: underline; text-underline-offset: .12em; }
+    .reference-back-part { display: inline; }
     @media (max-width: 720px) {
       :root {
         --text-size: 16px;
@@ -445,27 +553,31 @@
         min-height: calc(100dvh - 30px);
       }
       .cover-title, .cover-deck, .cover-page-link, .cover-turn { font-size: clamp(25px, 7.3vw, 38px); }
-      .cover-index-list { grid-column: 1 / -1; }
+      .cover-index-list { --cover-step: 2ch; grid-column: 1 / -1; }
       .cover-turn { grid-column: 1 / -1; grid-row: 3; }
-      .cover-symbols { grid-column: 1 / -1; grid-row: 4; min-height: 150px; }
+      .cover-symbols {
+        grid-column: 1 / -1;
+        grid-row: 4;
+        min-height: 0;
+        margin-block: clamp(38px, 11cqi, 72px);
+      }
       .cover-notes {
         grid-column: 1 / -1;
         grid-row: 5;
-        grid-template-columns: 1fr;
+        flex-direction: column;
         gap: 5px;
         align-items: stretch;
         margin-top: 10px;
       }
       .cover-note {
-        grid-column: auto !important;
-        font-size: max(12px, calc(var(--text-size) * .78));
+        flex: 0 0 auto !important;
+        padding: 9px 34px 9px 11px;
+        font-size: max(14px, calc(var(--text-size) * .92));
       }
       .page-scroll { padding: 12px 12px 40px; }
       .raw-grid { grid-template-columns: 1fr; gap: 36px; }
-      .reference-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 8px; }
-      .reference-title { grid-column: 1; }
-      .reference-number { grid-column: 2; }
-      .reference-entry { grid-column: 3; }
+      .page[data-page-panel="references"] { --reference-gap: 8px; }
+      .reference-back { left: 12px; bottom: 4px; font-size: clamp(25px, 7.3vw, 38px); }
       .map-toolbar { grid-template-columns: minmax(0, 1fr) 137px; gap: 6px; padding: 12px 4px 0 36px; }
       .control-row { grid-template-columns: 54px 76px; gap: 7px; }
       .range-control { width: 76px; }
@@ -478,6 +590,13 @@
       .story-legend-item svg { flex-basis: 18px; width: 18px; height: 18px; }
       .story-summary { min-height: 560px; }
     }
+    @media (orientation: portrait) {
+      .reference-back {
+        width: min-content;
+        line-height: 1.06;
+      }
+      .reference-back-part { display: block; }
+    }
     @media (hover: none) and (pointer: coarse) {
       .word, .concept, .theme, .anchor { cursor: pointer; }
     }
@@ -485,6 +604,7 @@
   </style>
 </head>
 <body>
+  <img class="surface-texture-overlay" src="texture-overlay.jpg" alt="" aria-hidden="true" draggable="false" />
   <main id="site">
     <section class="cover is-active" id="cover" aria-labelledby="cover-title">
       <div class="cover-inner">
@@ -505,9 +625,9 @@
         </div>
         <p class="cover-turn">Click the black side tabs <span class="cover-tab-sample" aria-hidden="true"></span> to turn pages.</p>
         <div class="cover-notes">
-          <div class="cover-note">*Source data: Gutiérrez et al. (2016) annotated 8,592 adjective–noun phrases as literal or metaphorical, using combinations occurring at least ten times in a 4.58-billion-token corpus. This site isolates the smooth and rough subset. Each noun is a recorded partner in a phrase such as <i>smooth operation</i> or <i>rough estimate</i>; frequency is its corpus count.</div>
-          <div class="cover-note">*On the map, scroll or drag vertically to reveal more nouns. Use the filters to compare shared nouns, concepts, and themes.</div>
-          <div class="cover-note">*In the chart, hover or tap a mark for details. Click to pin a card, drag its title to move it, and use × to close it.</div>
+          <div class="cover-note"><button class="cover-note-close" type="button" aria-label="Close source note">×</button>*Source data: Gutiérrez et al. (2016) annotated 8,592 adjective–noun phrases as literal or metaphorical, using combinations occurring at least ten times in a 4.58-billion-token corpus. This site isolates the smooth and rough subset. Each noun is a recorded partner in a phrase such as <i>smooth operation</i> or <i>rough estimate</i>; frequency is its corpus count.</div>
+          <div class="cover-note"><button class="cover-note-close" type="button" aria-label="Close map note">×</button>*On the map, scroll or drag vertically to reveal more nouns. Use the filters to compare shared nouns, concepts, and themes.</div>
+          <div class="cover-note"><button class="cover-note-close" type="button" aria-label="Close chart note">×</button>*In the chart, hover or tap a mark for details. Click to pin a card, drag its title to move it, and use × to close it.</div>
         </div>
       </div>
     </section>
@@ -596,7 +716,7 @@
     </section>
 
     <section class="page" data-page-panel="references" aria-label="References">
-      <div class="page-scroll">
+      <div class="page-scroll reference-scroll">
         <div class="reference-grid">
           <h2 class="reference-title">REFERENCES</h2>
 
@@ -617,6 +737,7 @@
           <div class="reference-entry">Nagano, H., Okamoto, S., &amp; Yamada, Y. (2014). Semantically layered structure of tactile textures. In M. Auvray &amp; C. Duriez (Eds.), <i>Haptics: Neuroscience, devices, modeling, and applications</i> (pp. 3–9). Springer. <a href="https://doi.org/10.1007/978-3-662-44193-0_1" target="_blank" rel="noopener noreferrer">https://doi.org/10.1007/978-3-662-44193-0_1</a></div>
         </div>
       </div>
+      <button class="reference-back" type="button" data-cover-page="" aria-label="Back to cover"><span class="reference-back-part">←</span> <span class="reference-back-part">Back</span> <span class="reference-back-part">to</span> <span class="reference-back-part">cover</span></button>
     </section>
   </main>
   <script src="./d3.min.js"></script>
@@ -1897,6 +2018,177 @@
       const pageTabs = [...document.querySelectorAll('.page-tab')];
       const pagePanels = [...document.querySelectorAll('[data-page-panel]')];
       const cover = document.getElementById('cover');
+      const coverIndex = cover.querySelector('.cover-index-list');
+      const coverIndexItems = [...coverIndex.querySelectorAll('li')];
+      const coverNotes = cover.querySelector('.cover-notes');
+      const fitCoverNavigation = () => {
+        coverIndex.classList.remove('is-too-narrow');
+        coverIndex.style.setProperty('--cover-step', '0px');
+        const indexStyle = getComputedStyle(coverIndex);
+        const availableWidth = Math.max(0, coverIndex.clientWidth
+          - Number.parseFloat(indexStyle.paddingLeft || 0)
+          - Number.parseFloat(indexStyle.paddingRight || 0)
+          - 16);
+        const buttons = coverIndexItems.map(item => item.querySelector('.cover-page-link'));
+        const widths = buttons.map(button => Math.ceil(button.getBoundingClientRect().width));
+        const fontSize = Number.parseFloat(getComputedStyle(buttons[0]).fontSize) || 32;
+        const desiredStep = fontSize * .556 * (matchMedia('(max-width: 720px)').matches ? 2 : 3);
+        let fittedStep = desiredStep;
+        widths.forEach((width, index) => {
+          if (index) fittedStep = Math.min(fittedStep, (availableWidth - width) / index);
+        });
+        fittedStep = Math.max(0, Math.floor(fittedStep));
+        coverIndex.style.setProperty('--cover-step', `${fittedStep}px`);
+        coverIndex.classList.toggle(
+          'is-too-narrow',
+          widths.some((width, index) => width + fittedStep * index > availableWidth + 1)
+        );
+      };
+      let coverNotesTimer = 0;
+      const fitCoverNotes = () => {
+        const allNotes = [...coverNotes.querySelectorAll('.cover-note')];
+        allNotes.forEach(note => {
+          note.style.removeProperty('width');
+          note.style.removeProperty('flex');
+          delete note.dataset.naturalHeight;
+        });
+        const notes = allNotes.filter(note => !note.hidden);
+        if (matchMedia('(max-width: 720px)').matches || !notes.length) return;
+        if (notes.length === 1) {
+          notes[0].style.flex = '1 1 100%';
+          notes[0].style.width = '100%';
+          return;
+        }
+
+        const notesStyle = getComputedStyle(coverNotes);
+        const gap = Number.parseFloat(notesStyle.columnGap || notesStyle.gap || 0);
+        const availableWidth = Math.max(0, Math.floor(coverNotes.clientWidth - gap * (notes.length - 1)));
+        const minimumWidth = Math.min(120, Math.floor(availableWidth / notes.length));
+        const weights = notes.map(note => note.textContent.replace('×', '').trim().length || 1);
+        const widths = Array(notes.length).fill(0);
+        const open = new Set(notes.map((_, index) => index));
+        let remainingWidth = availableWidth;
+        while (open.size) {
+          const remainingWeight = [...open].reduce((sum, index) => sum + weights[index], 0);
+          const constrained = [...open].filter(index => remainingWidth * weights[index] / remainingWeight < minimumWidth);
+          if (!constrained.length) {
+            [...open].forEach(index => {
+              widths[index] = remainingWidth * weights[index] / remainingWeight;
+            });
+            break;
+          }
+          constrained.forEach(index => {
+            widths[index] = minimumWidth;
+            remainingWidth -= minimumWidth;
+            open.delete(index);
+          });
+        }
+
+        const measureLayer = document.createElement('div');
+        Object.assign(measureLayer.style, {
+          position: 'fixed',
+          left: '-10000px',
+          top: '0',
+          width: '0',
+          height: '0',
+          overflow: 'visible',
+          visibility: 'hidden',
+          pointerEvents: 'none'
+        });
+        const clones = notes.map(note => {
+          const clone = note.cloneNode(true);
+          clone.removeAttribute('hidden');
+          clone.querySelector('.cover-note-close')?.remove();
+          Object.assign(clone.style, { display: 'block', position: 'static', flex: 'none', height: 'auto' });
+          measureLayer.appendChild(clone);
+          return clone;
+        });
+        document.body.appendChild(measureLayer);
+        const heightCaches = clones.map(() => new Map());
+        const heightAt = (index, width) => {
+          const roundedWidth = Math.max(minimumWidth, Math.round(width));
+          if (heightCaches[index].has(roundedWidth)) return heightCaches[index].get(roundedWidth);
+          clones[index].style.width = `${roundedWidth}px`;
+          const height = Math.ceil(clones[index].getBoundingClientRect().height);
+          heightCaches[index].set(roundedWidth, height);
+          return height;
+        };
+        const cloneStyle = getComputedStyle(clones[0]);
+        const lineHeight = Number.parseFloat(cloneStyle.lineHeight) || 1;
+        const verticalExtras = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth']
+          .reduce((sum, property) => sum + (Number.parseFloat(cloneStyle[property]) || 0), 0);
+        const linesAt = (index, width) => Math.max(1, Math.round((heightAt(index, width) - verticalExtras) / lineHeight));
+        const minimumTargetLines = Math.max(...notes.map((_, index) => linesAt(index, availableWidth)));
+        const maximumTargetLines = Math.max(...notes.map((_, index) => linesAt(index, minimumWidth)));
+        let roundedWidths = null;
+
+        for (let targetLines = minimumTargetLines; targetLines <= maximumTargetLines; targetLines += 1) {
+          const intervals = [];
+          let possible = true;
+          notes.forEach((_, index) => {
+            if (!possible || linesAt(index, minimumWidth) < targetLines || linesAt(index, availableWidth) > targetLines) {
+              possible = false;
+              return;
+            }
+            let low = minimumWidth;
+            let high = availableWidth;
+            while (low < high) {
+              const middle = Math.floor((low + high) / 2);
+              if (linesAt(index, middle) <= targetLines) high = middle;
+              else low = middle + 1;
+            }
+            const minimumForTarget = low;
+            low = minimumWidth;
+            high = availableWidth;
+            while (low < high) {
+              const middle = Math.ceil((low + high) / 2);
+              if (linesAt(index, middle) >= targetLines) low = middle;
+              else high = middle - 1;
+            }
+            intervals.push({ minimum: minimumForTarget, maximum: low });
+          });
+          if (!possible) continue;
+          const totalMinimum = intervals.reduce((sum, interval) => sum + interval.minimum, 0);
+          const totalMaximum = intervals.reduce((sum, interval) => sum + interval.maximum, 0);
+          if (totalMinimum > availableWidth || totalMaximum < availableWidth) continue;
+
+          roundedWidths = intervals.map(interval => interval.minimum);
+          let leftover = availableWidth - totalMinimum;
+          let remainingCapacity = totalMaximum - totalMinimum;
+          intervals.forEach((interval, index) => {
+            const capacity = interval.maximum - interval.minimum;
+            const addition = index === intervals.length - 1
+              ? leftover
+              : Math.min(capacity, Math.round(leftover * capacity / Math.max(1, remainingCapacity)));
+            roundedWidths[index] += addition;
+            leftover -= addition;
+            remainingCapacity -= capacity;
+          });
+          break;
+        }
+
+        if (!roundedWidths) {
+          roundedWidths = widths.map(width => Math.round(width));
+          roundedWidths[roundedWidths.length - 1] += availableWidth - roundedWidths.reduce((sum, width) => sum + width, 0);
+        }
+        const finalHeights = roundedWidths.map((width, index) => heightAt(index, width));
+        measureLayer.remove();
+        roundedWidths.forEach((width, index) => {
+          notes[index].style.flex = `0 0 ${width}px`;
+          notes[index].style.width = `${width}px`;
+          notes[index].dataset.naturalHeight = String(finalHeights[index]);
+        });
+      };
+      const scheduleFitCoverNotes = (immediate = false) => {
+        window.clearTimeout(coverNotesTimer);
+        coverNotesTimer = window.setTimeout(() => requestAnimationFrame(fitCoverNotes), immediate ? 0 : 80);
+      };
+      cover.querySelectorAll('.cover-note-close').forEach(button => {
+        button.addEventListener('click', () => {
+          button.closest('.cover-note').hidden = true;
+          scheduleFitCoverNotes(true);
+        });
+      });
       const pageTitles = new Map([
         ['raw', 'Data'],
         ['mapping', 'Mapping'],
@@ -1934,6 +2226,15 @@
       new ResizeObserver(() => {
         if (document.querySelector('[data-page-panel="story"]').classList.contains('is-active')) renderStory();
       }).observe(storyPlot);
+      new ResizeObserver(() => {
+        fitCoverNavigation();
+        scheduleFitCoverNotes();
+      }).observe(cover);
+      window.addEventListener('resize', fitCoverNavigation, { passive: true });
+      window.addEventListener('resize', () => scheduleFitCoverNotes(), { passive: true });
+      requestAnimationFrame(fitCoverNavigation);
+      scheduleFitCoverNotes(true);
+      document.fonts?.ready.then(() => scheduleFitCoverNotes(true));
       if (location.hash) history.replaceState(null, '', `${location.pathname}${location.search}`);
       activatePage('');
     })();
