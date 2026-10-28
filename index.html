@@ -36,10 +36,12 @@
     .surface-texture-overlay {
       position: fixed;
       z-index: 9999;
-      inset: 0;
+      inset: -2px;
       display: block;
-      width: 100vw;
-      height: 100dvh;
+      width: calc(100vw + 4px);
+      height: calc(100vh + 4px);
+      height: calc(100lvh + 4px);
+      min-height: calc(100dvh + env(safe-area-inset-bottom, 0px) + 4px);
       max-width: none;
       max-height: none;
       object-fit: fill;
@@ -57,8 +59,11 @@
         inset: auto;
         top: 50%;
         left: 50%;
-        width: 100dvh;
-        height: 100vw;
+        width: calc(100vh + 8px);
+        width: calc(100lvh + env(safe-area-inset-bottom, 0px) + 8px);
+        min-width: calc(100dvh + env(safe-area-inset-bottom, 0px) + 8px);
+        height: calc(100vw + 8px);
+        min-height: 0;
         transform: translate(-50%, -50%) rotate(90deg);
       }
     }
@@ -92,6 +97,7 @@
       z-index: 20;
       background: #fff;
       opacity: .95;
+      isolation: isolate;
     }
     .cover.is-ghost,
     .page.is-ghost {
@@ -492,6 +498,14 @@
     .story-node.is-smooth .story-mark,
     .story-node.is-rough .story-mark { fill: #fff; }
     .story-node.is-shared .story-mark { fill: #000; }
+    #site[data-current-page="mapping"] .page[data-page-panel="story"].is-ghost .story-node.is-shared .story-mark {
+      fill: #fff;
+    }
+    #site[data-current-page="mapping"] .page[data-page-panel="story"].is-ghost .story-legend-item:nth-child(2) path {
+      fill: #fff;
+      stroke: #000;
+      stroke-width: 1.75;
+    }
     .story-node:hover .story-mark,
     .story-node:focus-visible .story-mark { fill: #000; stroke-width: 2px; transform: scale(1.12); }
     .story-node.is-pinned.is-smooth .story-mark,
@@ -503,7 +517,7 @@
       width: min(280px, calc(100% - 24px));
       padding: 7px 9px;
       border: var(--line-weight) solid #000;
-      background: rgba(255, 255, 255, .92);
+      background: #fff;
       color: #000;
       font: 400 var(--text-size)/1.3 "Inter", Arial, sans-serif;
       pointer-events: none;
